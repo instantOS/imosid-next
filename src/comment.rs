@@ -2,7 +2,7 @@ use regex::Regex;
 
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum CommentType {
+pub enum CommentType {
     SectionBegin,
     SectionEnd,
     SourceInfo,
@@ -13,15 +13,15 @@ enum CommentType {
 
 #[derive(Clone)]
 pub struct Specialcomment {
-    line: u32,
+    pub line: u32,
     content: String,
-    section: String,
-    ctype: CommentType,
-    argument: Option<String>,
+    pub section: String,
+    pub ctype: CommentType,
+    pub argument: Option<String>,
 }
 
 impl Specialcomment {
-    fn new(line: &str, commentsymbol: &str, linenumber: u32) -> Option<Specialcomment> {
+    pub fn new(line: &str, commentsymbol: &str, linenumber: u32) -> Option<Specialcomment> {
         if !line.starts_with(commentsymbol) {
             return Option::None;
         }

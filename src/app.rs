@@ -20,12 +20,21 @@ pub fn build_app() -> Command {
                 .arg(arg!(-l --list "list test values").action(ArgAction::SetTrue)),
         )
         .subcommand(
-            Command::new("compile").about("compile file").arg(
-                Arg::new("file")
-                    .value_parser(value_parser!(PathBuf))
-                    .required(true)
-                    .help("file to compile"),
-            ),
+            Command::new("compile")
+                .about("compile file")
+                .arg(
+                    Arg::new("file")
+                        .value_parser(value_parser!(PathBuf))
+                        .required(true)
+                        .help("file to compile"),
+                )
+                .arg(
+                    Arg::new("metafile")
+                        .short('m')
+                        .long("metafile")
+                        .required(false)
+                        .action(ArgAction::SetTrue),
+                ),
         )
         .subcommand(
             Command::new("update")

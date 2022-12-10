@@ -1,20 +1,17 @@
-use crate::comment;
+// use crate::comment;
+use crate::hashable::Hashable;
+use sha256::digest;
 
 #[derive(Clone)]
 pub struct Section {
-    startline: u32,
-    name: Option<String>,
+    pub startline: u32,
+    pub name: Option<String>,
     source: Option<String>,
-    endline: u32,
-    hash: String,
+    pub endline: u32,
+    pub hash: String,
     targethash: Option<String>,
-    content: String,
-    modified: bool,
-}
-
-trait Hashable {
-    fn finalize(&mut self);
-    fn compile(&mut self) -> bool;
+    pub content: String,
+    pub modified: bool,
 }
 
 impl Hashable for Section {
@@ -42,11 +39,9 @@ impl Hashable for Section {
 
     /// generate section hash
     /// and detect section status
+    // TODO remove horrible cloning
     fn finalize(&mut self) {
-        let mut hasher = Sha256::new();
-        hasher.update(&self.content);
-        let hasher = hasher.finalize();
-        let newhash = format!("{:X}", hasher);
+        let newhash = digest(self.content.clone());
         match &self.name {
             Some(_) => {
                 if self.hash == newhash {
@@ -57,15 +52,15 @@ impl Hashable for Section {
             }
             // anonymous section
             None => {
-                self.hash = newhash;
+                self.hash = newhash.clone();
             }
         }
-        self.hash = String::from(format!("{:X}", hasher));
+        self.hash = newhash;
     }
 }
 
 impl Section {
-    fn new(
+    pub fn new(
         start: u32,
         end: u32,
         name: Option<String>,
@@ -89,7 +84,7 @@ impl Section {
 
     /// anonymous sections are sections without marker comments
     /// e.g. parts not tracked by imosid
-    fn is_anonymous(&self) -> bool {
+    pub fn is_anonymous(&self) -> bool {
         match &self.name {
             Some(_) => false,
             None => true,
@@ -98,13 +93,13 @@ impl Section {
 
     /// append string to content
     //maybe make this a trait?
-    fn push_str(&mut self, line: &str) {
+    pub fn push_str(&mut self, line: &str) {
         self.content.push_str(line);
         self.content.push('\n');
     }
 
     /// return entire section with formatted marker comments and content
-    fn output(&self, commentsign: &str) -> String {
+    pub fn output(&self, commentsign: &str) -> String {
         let mut outstr = String::new();
         match &self.name {
             Some(name) => {
