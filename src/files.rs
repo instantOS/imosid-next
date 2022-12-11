@@ -1,9 +1,9 @@
 use crate::built_info;
-use crate::comment::{Specialcomment, CommentType};
+use crate::comment::{CommentType, Specialcomment};
+use crate::contentline::ContentLine;
 use crate::hashable::Hashable;
 use crate::section::Section;
 use colored::Colorize;
-use crate::contentline::ContentLine;
 use regex::Regex;
 use semver::Version;
 use sha256::digest;
@@ -19,11 +19,11 @@ use toml::Value;
 
 // a file containing metadata about an imosid file for file types which do not support comments
 pub struct Metafile {
-    hash: String,
+    pub hash: String,
     parentfile: String,
     targetfile: Option<String>,
     sourcefile: Option<String>,
-    modified: bool,
+    pub modified: bool,
     imosidversion: Version,
     syntaxversion: i64,
     value: Value,
@@ -246,29 +246,34 @@ impl Metafile {
 pub struct Specialfile {
     //TODO maybe implement finalize?
     specialcomments: Vec<Specialcomment>,
-    sections: Vec<Section>,
+    pub sections: Vec<Section>,
     file: File,
     filename: String,
-    targetfile: Option<String>,
-    metafile: Option<Metafile>,
-    commentsign: String,
-    modified: bool,
-    permissions: Option<u32>,
+    pub targetfile: Option<String>,
+    pub metafile: Option<Metafile>,
+    pub commentsign: String,
+    pub modified: bool,
+    pub permissions: Option<u32>,
 }
 
 impl Specialfile {
-    fn new(filename: &str) -> Result<Specialfile, std::io::Error> {
-        let sourcepath = Path::new(filename)
+    pub fn new(filename: &str) -> Result<Specialfile, std::io::Error> {
+        let filepath = PathBuf::from(filename);
+        Self::from(&filepath)
+    }
+
+    pub fn from(path: &PathBuf) -> Result<Specialfile, std::io::Error> {
+        let sourcepath = path
             .canonicalize()
             .expect("could not canonicalize path")
             .display()
             .to_string();
 
-        let sourcefile = match OpenOptions::new().read(true).write(true).open(filename) {
+        let sourcefile = match OpenOptions::new().read(true).write(true).open(path) {
             Err(e) => {
                 if e.kind() == ErrorKind::PermissionDenied {
                     // open file as readonly if writing is not permitted
-                    match OpenOptions::new().read(true).write(false).open(filename) {
+                    match OpenOptions::new().read(true).write(false).open(path) {
                         Ok(file) => file,
                         Err(error) => return Err(error),
                     }
@@ -521,7 +526,7 @@ impl Specialfile {
         None
     }
 
-    fn compile(&mut self) -> bool {
+    pub fn compile(&mut self) -> bool {
         let mut didsomething = false;
         match &mut self.metafile {
             None => {
@@ -536,7 +541,7 @@ impl Specialfile {
         didsomething
     }
 
-    fn write_to_file(&mut self) {
+    pub fn write_to_file(&mut self) {
         let targetname = &expand_tilde(&self.filename);
         let newfile = File::create(targetname);
         match newfile {

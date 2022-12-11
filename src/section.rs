@@ -6,7 +6,7 @@ use sha256::digest;
 pub struct Section {
     pub startline: u32,
     pub name: Option<String>,
-    source: Option<String>,
+    pub source: Option<String>,
     pub endline: u32,
     pub hash: String,
     targethash: Option<String>,

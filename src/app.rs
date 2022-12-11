@@ -29,9 +29,7 @@ pub fn build_app() -> Command {
                         .help("file to compile"),
                 )
                 .arg(
-                    Arg::new("metafile")
-                        .short('m')
-                        .long("metafile")
+                    arg!(-m --metafile "use meta file")
                         .required(false)
                         .action(ArgAction::SetTrue),
                 ),
