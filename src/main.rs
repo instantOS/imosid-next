@@ -61,6 +61,54 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
 
+    if let Some(matches) = matches.subcommand_matches("check") {
+        let filename = matches.get_one::<PathBuf>("directory").unwrap();
+        if !filename.is_dir() {
+            eprintln!(
+                "{} is not a directory, only directories can be checked",
+                filename.to_str().unwrap().red()
+            );
+            return Ok(());
+        }
+        let mut anymodified = false;
+        for entry in WalkDir::new(filename).into_iter().filter_map(|e| e.ok()) {
+            let entrypath = entry.path().to_path_buf();
+            if entrypath.is_dir()
+                || entry.path().ends_with(".imosid.toml")
+                || entry.path().to_str().unwrap().contains("/.git/")
+            {
+                continue;
+            }
+            let checkfile = match Specialfile::from(&entrypath) {
+                Ok(file) => file,
+                Err(_) => {
+                    eprintln!("could not open file {}", entrypath.to_str().unwrap().red());
+                    continue;
+                }
+            };
+            if checkfile.modified {
+                println!("{} {}", checkfile.filename.red().bold(), "modified".red());
+                anymodified = true;
+            }
+            let mut fileanonymous = true;
+            if !checkfile.metafile.is_some() {
+                for i in checkfile.sections {
+                    if !i.is_anonymous() {
+                        fileanonymous = false;
+                        break;
+                    }
+                }
+                if fileanonymous {
+                    println!(
+                        "{} {}",
+                        checkfile.filename.yellow().bold(),
+                        "is unmanaged".yellow()
+                    )
+                }
+            }
+        }
+    }
+
     if let Some(matches) = matches.subcommand_matches("apply") {
         let mut donesomething = false;
         let filename = matches.get_one::<PathBuf>("file").unwrap();
