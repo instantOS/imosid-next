@@ -6,9 +6,10 @@ mod files;
 mod hashable;
 mod section;
 use std::{fmt::format, path::PathBuf};
+use walkdir::WalkDir;
 
 use crate::{
-    files::{Metafile, Specialfile},
+    files::{create_file, expand_tilde, Metafile, Specialfile},
     hashable::Hashable,
 };
 
@@ -45,7 +46,7 @@ fn main() -> Result<(), std::io::Error> {
         let mut compfile = match Specialfile::from(filename) {
             Ok(file) => file,
             Err(_) => {
-                eprintln!("{}", "could not open file".red());
+                eprintln!("could not open file {}", filename.to_str().unwrap().red());
                 return Ok(());
             }
         };
@@ -57,6 +58,54 @@ fn main() -> Result<(), std::io::Error> {
                 "{} already compiled, no change",
                 filename.to_str().unwrap().bold().green()
             );
+        }
+    }
+
+    if let Some(matches) = matches.subcommand_matches("apply") {
+        let mut donesomething = false;
+        let filename = matches.get_one::<PathBuf>("file").unwrap();
+        if filename.is_dir() {
+            for entry in WalkDir::new(filename).into_iter().filter_map(|e| e.ok()) {
+                let entrypath = entry.path().to_path_buf();
+                if entrypath.is_dir()
+                    || entry.path().ends_with(".imosid.toml")
+                    || entry.path().to_str().unwrap().contains("/.git/")
+                {
+                    continue;
+                }
+                let tmpsource = match Specialfile::from(&entry.path().to_path_buf()) {
+                    Ok(file) => file,
+                    Err(_) => {
+                        eprintln!(
+                            "could not open file {}",
+                            &entry.path().to_str().unwrap().red()
+                        );
+                        continue;
+                    }
+                };
+                match tmpsource.apply() {
+                    Changed => {
+                        donesomething = true;
+                    }
+                    _ => {}
+                }
+            }
+            if !donesomething {
+                println!("{}", "nothing to do".bold());
+            }
+            return Ok(());
+        } else if filename.is_file() {
+            let tmpsource = match Specialfile::from(filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    eprintln!("could not open file {}", filename.to_str().unwrap().red());
+                    return Ok(());
+                }
+            };
+            tmpsource.apply();
+        } else {
+            eprintln!("{}", "file does not exist".red().bold());
+            return Ok(());
         }
     }
 

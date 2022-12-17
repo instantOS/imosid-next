@@ -32,6 +32,12 @@ pub struct Metafile {
     permissions: Option<u32>,
 }
 
+pub enum ApplyResult {
+    Changed,
+    Unchanged,
+    Error,
+}
+
 impl Hashable for Metafile {
     // check for modifications
     fn finalize(&mut self) {
@@ -247,8 +253,8 @@ pub struct Specialfile {
     //TODO maybe implement finalize?
     specialcomments: Vec<Specialcomment>,
     pub sections: Vec<Section>,
-    file: File,
-    filename: String,
+    pub file: File,
+    pub filename: String,
     pub targetfile: Option<String>,
     pub metafile: Option<Metafile>,
     pub commentsign: String,
@@ -569,19 +575,20 @@ impl Specialfile {
         }
     }
 
-    fn create_file(source: Specialfile) -> bool {
+    // create the target file if not existing
+    pub fn create_file(source: &Specialfile) -> bool {
         let targetpath = String::from(source.targetfile.clone().unwrap());
         let realtargetpath = expand_tilde(&targetpath);
         // create new file
         match &source.metafile {
             None => {
                 let mut targetfile: Specialfile = Specialfile {
-                    specialcomments: source.specialcomments,
-                    sections: source.sections,
+                    specialcomments: source.specialcomments.clone(),
+                    sections: source.sections.clone(),
                     filename: realtargetpath.clone(),
                     targetfile: Option::Some(targetpath),
-                    commentsign: source.commentsign,
-                    file: source.file,
+                    commentsign: source.commentsign.clone(),
+                    file: source.file.try_clone().unwrap(),
                     metafile: None,
                     modified: source.modified,
                     permissions: source.permissions,
@@ -604,7 +611,7 @@ impl Specialfile {
                     .write_all(metafile.content.as_bytes())
                     .expect(&format!("could not write file {}", &targetpath));
                 let mut newmetafile = Metafile::from(PathBuf::from(&realtargetpath));
-                newmetafile.sourcefile = Some(source.filename);
+                newmetafile.sourcefile = Some(source.filename.clone());
                 newmetafile.permissions = metafile.permissions;
                 newmetafile.write_to_file();
                 newmetafile.write_permissions();
@@ -625,8 +632,44 @@ impl Specialfile {
         anonymous
     }
 
+    pub fn apply(&self) -> ApplyResult {
+        let mut donesomething = false;
+        if let Some(target) = &self.targetfile {
+            if create_file(&target) {
+                if Specialfile::create_file(self) {
+                    println!(
+                        "applied {} to create {} ",
+                        &self.filename.green(),
+                        &target.bold()
+                    );
+                    donesomething = true;
+                }
+            } else {
+                let mut targetfile = match Specialfile::new(&expand_tilde(&target)) {
+                    Ok(file) => file,
+                    Err(_) => {
+                        eprintln!("failed to parse {}", &target.red());
+                        return ApplyResult::Error;
+                    }
+                };
+                if targetfile.applyfile(&self) {
+                    println!("applied {} to {} ", &self.filename.green(), &target.bold());
+                    donesomething = true;
+                }
+            }
+        } else {
+            println!("{} has no target file", &self.filename.red());
+            return ApplyResult::Error;
+        }
+        if donesomething {
+            return ApplyResult::Changed;
+        } else {
+            return ApplyResult::Unchanged;
+        }
+    }
+
     // return true if file will be modified
-    fn applyfile(&mut self, inputfile: &Specialfile) -> bool {
+    pub fn applyfile(&mut self, inputfile: &Specialfile) -> bool {
         match &mut self.metafile {
             None => {
                 if self.is_anonymous() {
@@ -950,7 +993,7 @@ fn get_comment_sign(filename: &str, firstline: &str) -> String {
 }
 
 // expand tilde in path into the home folder
-fn expand_tilde(input: &str) -> String {
+pub fn expand_tilde(input: &str) -> String {
     let mut retstr = String::from(input);
     if retstr.starts_with("~/") {
         retstr = String::from(format!(
@@ -961,4 +1004,27 @@ fn expand_tilde(input: &str) -> String {
         ));
     }
     return retstr;
+}
+
+// create file with directory creation and
+// parsing of the home tilde
+// MAYBETODO: support environment variables
+// return false if file already exists
+pub fn create_file(path: &str) -> bool {
+    let realtargetname = expand_tilde(path);
+
+    let checkpath = Path::new(&realtargetname);
+    if !checkpath.is_file() {
+        let bufpath = checkpath.to_path_buf();
+        match bufpath.parent() {
+            Some(parent) => {
+                std::fs::create_dir_all(parent.to_str().unwrap()).unwrap();
+            }
+            None => {}
+        }
+        File::create(&realtargetname).unwrap();
+        return true;
+    } else {
+        return false;
+    }
 }
