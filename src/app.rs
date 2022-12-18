@@ -5,15 +5,9 @@ pub fn build_app() -> Command {
     command!()
         .color(ColorChoice::Always)
         .subcommand_required(true)
+        .arg_required_else_help(true)
         .about("instant manager of sections in dotfiles")
         .author("paperbenni <paperbenni@gmail.com>")
-        .arg(arg!([name] "Optional Name to operate on"))
-        .arg(arg!(-d --debug "debugging?"))
-        .arg(
-            arg!(-c --config <FILE> "sets a custom config file")
-                .required(false)
-                .value_parser(value_parser!(PathBuf)),
-        )
         .subcommand(
             Command::new("test")
                 .about("testing stuff")

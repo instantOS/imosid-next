@@ -527,6 +527,25 @@ impl Specialfile {
         let mut modified = false;
         let mut applymap: HashMap<&String, Specialfile> = HashMap::new();
         let mut applyvec = Vec::new();
+        if self.metafile.is_some() {
+            let metafile = &self.metafile.as_ref().unwrap();
+            if metafile.modified {
+                return;
+            }
+            if !metafile.sourcefile.is_some() {
+                return;
+            }
+            //TODO look up what as_ref does
+            match Specialfile::new(&metafile.sourcefile.as_ref().unwrap()) {
+                Ok(file) => {
+                    modified = self.applyfile(&file);
+                }
+                Err(e) => {
+                    println!("failed to apply metafile sourfe, error: {}", e);
+                }
+            }
+            return;
+        }
         for i in &self.sections {
             if !i.source.is_some() {
                 continue;

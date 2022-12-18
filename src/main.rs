@@ -155,23 +155,21 @@ fn main() -> Result<(), std::io::Error> {
 
         check_file_arg!(filename);
 
-        let updatefile = match Specialfile::from(filename) {
+        let mut updatefile = match Specialfile::from(filename) {
             Ok(file) => file,
             Err(_) => {
                 eprintln!("could not open file {}", filename.to_str().unwrap().red());
                 return Ok(());
             }
         };
-        
+        updatefile.update();
+
         match updatefile.metafile {
             Some(_) => {
                 eprintln!("cannot update metafile");
                 return Ok(());
             }
-            None => {
-
-
-            }
+            None => {}
         }
 
         if sections.is_empty() {
