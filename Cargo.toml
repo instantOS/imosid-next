@@ -1,8 +1,14 @@
 [package]
-name = "claptest"
-version = "0.1.0"
+name = "imosid"
+version = "0.0.0-beta7"
 edition = "2021"
 build = "build.rs"
+authors = ["paperbenni <paperbenni@gmail.com>"]
+license = "GPL-2.0"
+description = "a config file manager that leaves the user alone"
+documentation = "https://instantos.io/docs"
+repository = "https://github.com/instantOS/imosid"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.release]

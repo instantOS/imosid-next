@@ -94,20 +94,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "claptest"
-version = "0.1.0"
-dependencies = [
- "built",
- "clap",
- "colored",
- "regex",
- "semver",
- "sha256",
- "toml",
- "walkdir",
-]
-
-[[package]]
 name = "colored"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -208,6 +194,20 @@ checksum = "e14ddfc70884202db2244c223200c204c2bda1bc6e0998d11b5e024d657209e6"
 dependencies = [
  "unicode-bidi",
  "unicode-normalization",
+]
+
+[[package]]
+name = "imosid"
+version = "0.0.0-beta7"
+dependencies = [
+ "built",
+ "clap",
+ "colored",
+ "regex",
+ "semver",
+ "sha256",
+ "toml",
+ "walkdir",
 ]
 
 [[package]]
