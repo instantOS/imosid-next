@@ -74,7 +74,7 @@ fn main() -> Result<(), std::io::Error> {
         for entry in WalkDir::new(filename).into_iter().filter_map(|e| e.ok()) {
             let entrypath = entry.path().to_path_buf();
             if entrypath.is_dir()
-                || entry.path().ends_with(".imosid.toml")
+                || entry.path().to_str().unwrap().ends_with("imosid.toml")
                 || entry.path().to_str().unwrap().contains("/.git/")
             {
                 continue;

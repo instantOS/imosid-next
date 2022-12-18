@@ -189,7 +189,7 @@ impl Metafile {
     }
 
     fn get_content_hash(&self) -> String {
-        digest(self.content.clone())
+        digest(self.content.clone()).to_uppercase()
     }
 
     // populate toml value with data
@@ -654,6 +654,7 @@ impl Specialfile {
                 };
                 if targetfile.applyfile(&self) {
                     println!("applied {} to {} ", &self.filename.green(), &target.bold());
+                    targetfile.write_to_file();
                     donesomething = true;
                 }
             }
@@ -669,6 +670,7 @@ impl Specialfile {
     }
 
     // return true if file will be modified
+    // applies other file to self
     pub fn applyfile(&mut self, inputfile: &Specialfile) -> bool {
         match &mut self.metafile {
             None => {
@@ -748,14 +750,19 @@ impl Specialfile {
                         println!(
                             "applied {} sections from {} to {}",
                             applycounter,
-                            self.filename.bold(),
-                            inputfile.filename.bold()
+                            inputfile.filename.bold(),
+                            self.filename.bold()
                         );
                     } else {
                         println!(
-                            "applied no sections from {} to {}",
-                            self.filename.bold(),
-                            inputfile.filename.bold()
+                            "applied no sections from {} to {}{}",
+                            inputfile.filename.bold().dimmed(),
+                            self.filename.bold().dimmed(),
+                            if self.modified {
+                                " (modified)".dimmed()
+                            } else {
+                                "".dimmed()
+                            }
                         );
                     }
                 }

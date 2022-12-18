@@ -41,7 +41,7 @@ impl Hashable for Section {
     /// and detect section status
     // TODO remove horrible cloning
     fn finalize(&mut self) {
-        let newhash = digest(self.content.clone());
+        let newhash = digest(self.content.clone()).to_uppercase();
         match &self.name {
             Some(_) => {
                 if self.hash == newhash {
