@@ -521,6 +521,48 @@ impl Specialfile {
         }
     }
 
+    pub fn update(&mut self) {
+        //iterate over sections in self.sections
+
+        let mut modified = false;
+        let mut applymap: HashMap<&String, Specialfile> = HashMap::new();
+        let mut applyvec = Vec::new();
+        for i in &self.sections {
+            if !i.source.is_some() {
+                continue;
+            }
+            if let Some(source) = &i.source {
+                if !applymap.contains_key(source) {
+                    match Specialfile::new(source) {
+                        Ok(sfile) => {
+                            applymap.insert(source, sfile);
+                        }
+                        Err(_) => {
+                            println!("error: could not open source file {}", source);
+                            continue;
+                        }
+                    }
+                }
+                if let Some(sfile) = applymap.get(source) {
+                    applyvec.push(sfile.clone().get_section(source).unwrap());
+                }
+                // if applymap.contains_key(source) {
+                //     applyvec.push(
+                //         applymap
+                //             .get(source)
+                //             .unwrap()
+                //             .clone()
+                //             .get_section(source)
+                //             .unwrap(),
+                //     );
+                // }
+            }
+        }
+        for i in applyvec.iter() {
+            self.applysection(i.clone());
+        }
+    }
+
     fn get_section(&self, name: &str) -> Option<Section> {
         for i in &self.sections {
             if let Some(sname) = &i.name {

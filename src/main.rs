@@ -5,6 +5,8 @@ mod contentline;
 mod files;
 mod hashable;
 mod section;
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::{fmt::format, path::PathBuf};
 use walkdir::WalkDir;
 
@@ -140,6 +142,43 @@ fn main() -> Result<(), std::io::Error> {
             }
         }
     }
+
+    if let Some(matches) = matches.subcommand_matches("update") {
+        let filename = matches.get_one::<PathBuf>("file").unwrap();
+
+        // this looks bad
+        let sections = matches
+            .get_many::<String>("section")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>();
+
+        check_file_arg!(filename);
+
+        let updatefile = match Specialfile::from(filename) {
+            Ok(file) => file,
+            Err(_) => {
+                eprintln!("could not open file {}", filename.to_str().unwrap().red());
+                return Ok(());
+            }
+        };
+        
+        match updatefile.metafile {
+            Some(_) => {
+                eprintln!("cannot update metafile");
+                return Ok(());
+            }
+            None => {
+
+
+            }
+        }
+
+        if sections.is_empty() {
+            // update all sections
+        }
+    }
+
     if let Some(matches) = matches.subcommand_matches("delete") {
         let filename = matches.get_one::<PathBuf>("file").unwrap();
 
