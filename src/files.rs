@@ -532,6 +532,20 @@ impl Specialfile {
         None
     }
 
+    // delete section sectionname from sections
+    pub fn deletesection(&mut self, sectionname: &str) -> bool {
+        if let Some(index) = self.sections.iter().position(|x| match &x.name {
+            Some(name) => name.eq(sectionname),
+            None => false,
+        }) {
+            self.sections.remove(index);
+            println!("deleting section {}", sectionname);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     pub fn compile(&mut self) -> bool {
         let mut didsomething = false;
         match &mut self.metafile {

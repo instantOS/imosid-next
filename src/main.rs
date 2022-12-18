@@ -109,6 +109,35 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
 
+    if let Some(matches) = matches.subcommand_matches("delete") {
+        let filename = matches.get_one::<PathBuf>("file").unwrap();
+
+        // this looks bad
+        let sections = matches
+            .get_many::<String>("section")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>();
+
+        check_file_arg!(filename);
+
+        let mut deletefile = match Specialfile::from(filename) {
+            Ok(file) => file,
+            Err(_) => {
+                eprintln!("could not open file {}", filename.to_str().unwrap().red());
+                return Ok(());
+            }
+        };
+        for i in sections {
+            if deletefile.deletesection(i) {
+                println!("deleted section {}", i.bold());
+            } else {
+                println!("could not find section {}", i.red());
+            }
+        }
+        deletefile.write_to_file();
+    }
+
     if let Some(matches) = matches.subcommand_matches("apply") {
         let mut donesomething = false;
         let filename = matches.get_one::<PathBuf>("file").unwrap();

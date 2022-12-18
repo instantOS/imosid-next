@@ -94,6 +94,24 @@ pub fn build_app() -> Command {
                 ),
         )
         .subcommand(
+            Command::new("delete")
+                .about("delete section from file")
+                .arg(
+                    Arg::new("file")
+                        .required(true)
+                        .help("file to delete section from")
+                        .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
+                    Arg::new("section")
+                        .action(ArgAction::Append)
+                        .required(true)
+                        .value_parser(value_parser!(String))
+                        .action(ArgAction::Append)
+                        .help("section(s) to delete"),
+                ),
+        )
+        .subcommand(
             Command::new("check")
                 .about("check directory for modified files")
                 .arg(
