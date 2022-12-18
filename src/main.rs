@@ -109,6 +109,37 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
 
+    if let Some(matches) = matches.subcommand_matches("query") {
+        let filename = matches.get_one::<PathBuf>("file").unwrap();
+        // this looks bad
+        let sections = matches
+            .get_many::<String>("section")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect::<Vec<_>>();
+        check_file_arg!(filename);
+        let queryfile = match Specialfile::from(filename) {
+            Ok(file) => file,
+            Err(_) => {
+                eprintln!("could not open file {}", filename.to_str().unwrap().red());
+                return Ok(());
+            }
+        };
+        if queryfile.metafile.is_some() {
+            todo!("add message for this");
+            return Ok(());
+        }
+        for i in queryfile.sections {
+            if i.is_anonymous() {
+                continue;
+            }
+            for j in &sections {
+                if i.name.clone().unwrap().eq(j) {
+                    println!("{}", i.output(&queryfile.commentsign));
+                }
+            }
+        }
+    }
     if let Some(matches) = matches.subcommand_matches("delete") {
         let filename = matches.get_one::<PathBuf>("file").unwrap();
 

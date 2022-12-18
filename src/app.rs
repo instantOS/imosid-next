@@ -60,17 +60,17 @@ pub fn build_app() -> Command {
             Command::new("query")
                 .about("print section from file")
                 .arg(
+                    Arg::new("file")
+                        .required(true)
+                        .help("file to search through")
+                        .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
                     Arg::new("section")
                         .action(ArgAction::Append)
                         .required(true)
                         .value_parser(value_parser!(String))
                         .help("section(s) to include in output"),
-                )
-                .arg(
-                    Arg::new("file")
-                        .required(true)
-                        .help("file to search through")
-                        .value_parser(value_parser!(PathBuf)),
                 ),
         )
         .subcommand(
