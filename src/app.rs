@@ -32,20 +32,17 @@ pub fn build_app() -> Command {
             Command::new("update")
                 .about("update sections from sources")
                 .arg(
-                    Arg::new("file")
-                        .help("file to update")
+                    arg!(-f --file "file to update")
                         .required(true)
                         .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    Arg::new("print")
-                        .help("only print result, do not write to file")
+                    arg!(-p --print "only print result, do not write to file")
                         .required(false)
                         .action(ArgAction::SetTrue),
                 )
                 .arg(
-                    Arg::new("section")
-                        .help("only update section, default is all")
+                    arg!(-s --section "only update section, default is all")
                         .required(false)
                         .action(ArgAction::Append),
                 ),
@@ -54,17 +51,15 @@ pub fn build_app() -> Command {
             Command::new("query")
                 .about("print section from file")
                 .arg(
-                    Arg::new("file")
+                    arg!(--file "file to search through")
                         .required(true)
-                        .help("file to search through")
                         .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    Arg::new("section")
-                        .action(ArgAction::Append)
+                    arg!(--section "section to print")
                         .required(true)
-                        .value_parser(value_parser!(String))
-                        .help("section(s) to include in output"),
+                        .action(ArgAction::Append)
+                        .value_parser(value_parser!(String)),
                 ),
         )
         .subcommand(
@@ -81,9 +76,8 @@ pub fn build_app() -> Command {
             Command::new("apply")
                 .about("apply source to target marked in the file")
                 .arg(
-                    Arg::new("file")
+                    arg!(--file "file to apply")
                         .required(true)
-                        .help("file to apply")
                         .value_parser(value_parser!(PathBuf)),
                 ),
         )
@@ -97,19 +91,18 @@ pub fn build_app() -> Command {
                         .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    Arg::new("section")
-                        .action(ArgAction::Append)
+                    arg!(--section "section to delete")
                         .required(true)
-                        .value_parser(value_parser!(String))
                         .action(ArgAction::Append)
-                        .help("section(s) to delete"),
+                        .value_parser(value_parser!(String))
+                        .action(ArgAction::Append),
                 ),
         )
         .subcommand(
             Command::new("check")
                 .about("check directory for modified files")
                 .arg(
-                    Arg::new("directory")
+                    arg!(--directory "directory to check")
                         .required(true)
                         .value_parser(value_parser!(PathBuf)),
                 ),
