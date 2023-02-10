@@ -31,8 +31,8 @@ macro_rules! check_file_arg {
 }
 
 fn main() -> Result<(), std::io::Error> {
-    let tester = app::build_app();
-    let matches = tester.get_matches();
+    let imosidapp = app::build_app();
+    let matches = imosidapp.get_matches();
 
     // compile a file, making it an unmodified imosid file
     if let Some(matches) = matches.subcommand_matches("compile") {
