@@ -26,11 +26,7 @@ impl Hashable for Section {
                 }
             }
             None => {
-                if self.is_anonymous() {
-                    return false;
-                } else {
-                    return true;
-                }
+                return self.is_anonymous();
             }
         }
         self.targethash = Option::Some(self.hash.clone());
@@ -85,10 +81,7 @@ impl Section {
     /// anonymous sections are sections without marker comments
     /// e.g. parts not tracked by imosid
     pub fn is_anonymous(&self) -> bool {
-        match &self.name {
-            Some(_) => false,
-            None => true,
-        }
+        return self.name.is_none();
     }
 
     /// append string to content
