@@ -87,8 +87,7 @@ impl Section {
     /// append string to content
     //maybe make this a trait?
     pub fn push_str(&mut self, line: &str) {
-        self.content.push_str(line);
-        self.content.push('\n');
+        self.content.push_str(&format!("{line}\n"));
     }
 
     /// return entire section with formatted marker comments and content

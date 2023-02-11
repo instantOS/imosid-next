@@ -990,14 +990,15 @@ impl ToString for Specialfile {
 fn get_comment_sign(filename: &str, firstline: &str) -> String {
     let fpath = Path::new(filename);
 
-    let mut file_name_commentsigns: HashMap<&str, &str> = HashMap::new();
-    file_name_commentsigns.insert("dunstrc", "#");
-    file_name_commentsigns.insert("jgmenurc", "#");
-    file_name_commentsigns.insert("zshrc", "#");
-    file_name_commentsigns.insert("bashrc", "#");
-    file_name_commentsigns.insert("Xresources", "!");
-    file_name_commentsigns.insert("xsettingsd", "#");
-    file_name_commentsigns.insert("vimrc", "\"");
+    let mut file_name_commentsigns: HashMap<&str, &str> = HashMap::from([
+        ("dunstrc", "#"),
+        ("jgmenurc", "#"),
+        ("zshrc", "#"),
+        ("bashrc", "#"),
+        ("Xresources", "!"),
+        ("xsettingsd", "#"),
+        ("vimrc", "\""),
+    ]);
 
     // get comment syntax via file name
     let fname = fpath.file_name().and_then(OsStr::to_str);
@@ -1014,22 +1015,23 @@ fn get_comment_sign(filename: &str, firstline: &str) -> String {
         None => {}
     }
 
-    let mut file_type_commentsigns: HashMap<&str, &str> = HashMap::new();
-    file_type_commentsigns.insert("py", "#");
-    file_type_commentsigns.insert("sh", "#");
-    file_type_commentsigns.insert("zsh", "#");
-    file_type_commentsigns.insert("bash", "#");
-    file_type_commentsigns.insert("fish", "#");
-    file_type_commentsigns.insert("c", "//");
-    file_type_commentsigns.insert("cpp", "//");
-    file_type_commentsigns.insert("rasi", "//");
-    file_type_commentsigns.insert("desktop", "#");
-    file_type_commentsigns.insert("conf", "#");
-    file_type_commentsigns.insert("vim", "\"");
-    file_type_commentsigns.insert("reg", ";");
-    file_type_commentsigns.insert("rc", "#");
-    file_type_commentsigns.insert("ini", ";");
-    file_type_commentsigns.insert("xresources", "!");
+    let mut file_type_commentsigns: HashMap<&str, &str> = HashMap::from([
+        ("py", "#"),
+        ("sh", "#"),
+        ("zsh", "#"),
+        ("bash", "#"),
+        ("fish", "#"),
+        ("c", "//"),
+        ("cpp", "//"),
+        ("rasi", "//"),
+        ("desktop", "#"),
+        ("conf", "#"),
+        ("vim", "\""),
+        ("reg", ";"),
+        ("rc", "#"),
+        ("ini", ";"),
+        ("xresources", "!"),
+    ]);
 
     let ext = fpath.extension().and_then(OsStr::to_str);
 
@@ -1049,14 +1051,14 @@ fn get_comment_sign(filename: &str, firstline: &str) -> String {
 
     // get comment syntax via #!/hashbang
 
-    let mut file_hashbang_commentsigns: HashMap<&str, &str> = HashMap::new();
-
-    file_hashbang_commentsigns.insert("python", "#");
-    file_hashbang_commentsigns.insert("sh", "#");
-    file_hashbang_commentsigns.insert("bash", "#");
-    file_hashbang_commentsigns.insert("zsh", "#");
-    file_hashbang_commentsigns.insert("fish", "#");
-    file_hashbang_commentsigns.insert("node", "//");
+    let mut file_hashbang_commentsigns: HashMap<&str, &str> = HashMap::from([
+        ("python", "#"),
+        ("sh", "#"),
+        ("bash", "#"),
+        ("zsh", "#"),
+        ("fish", "#"),
+        ("node", "//"),
+    ]);
 
     match Regex::new("^#!/.*[/ ](.*)$").unwrap().captures(&firstline) {
         Some(captures) => {

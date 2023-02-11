@@ -1,5 +1,11 @@
 # imosid
 
+
+## What is this
+
+this is a refactor/rewrite of imosid. It's not yet feature complete, but is
+aiming to clean up the codebase. 
+
 ( Instant Manager Of Sections In Dotfiles )
 
 A config file manager that leaves the user alone
