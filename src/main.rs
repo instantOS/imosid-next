@@ -5,13 +5,11 @@ mod contentline;
 mod files;
 mod hashable;
 mod section;
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::{fmt::format, path::PathBuf};
+use std::path::PathBuf;
 use walkdir::WalkDir;
 
 use crate::{
-    files::{create_file, expand_tilde, Metafile, Specialfile},
+    files::{ApplyResult, Metafile, Specialfile},
     hashable::Hashable,
 };
 
@@ -188,10 +186,13 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut deletefile = Specialfile::from(filename) else {
-            eprintln!("could not open file {}", filename.to_str().unwrap().red());
-            return Ok(());
-        };
+            let mut deletefile = match Specialfile::from(filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    eprintln!("could not open file {}", filename.to_str().unwrap().red());
+                    return Ok(());
+                }
+            };
 
             for i in sections {
                 if deletefile.deletesection(i) {
@@ -226,7 +227,7 @@ fn main() -> Result<(), std::io::Error> {
                         }
                     };
                     match tmpsource.apply() {
-                        Changed => {
+                        ApplyResult::Changed => {
                             donesomething = true;
                         }
                         _ => {}
@@ -309,7 +310,12 @@ fn main() -> Result<(), std::io::Error> {
                 std::process::exit(1);
             }
         }
+        Some((&_, _)) => {
+            return Ok(());
+        }
+        None => {
+            return Ok(());
+        }
     }
-
     return Ok(());
 }
