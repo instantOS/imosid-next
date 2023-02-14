@@ -26,7 +26,7 @@ impl Hashable for Section {
                 }
             }
             None => {
-                return self.is_anonymous();
+                return !self.is_anonymous();
             }
         }
         self.targethash = Option::Some(self.hash.clone());
