@@ -1,4 +1,5 @@
 mod app;
+mod test;
 use colored::Colorize;
 mod comment;
 mod contentline;

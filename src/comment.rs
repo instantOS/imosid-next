@@ -13,11 +13,11 @@ pub enum CommentType {
 
 #[derive(Clone)]
 pub struct Specialcomment {
-    pub line: u32,
+    pub line: u32, // line number comment is at in file
     content: String,
-    pub section: String,
-    pub ctype: CommentType,
-    pub argument: Option<String>,
+    pub section: String, // section name extracted from prefix
+    pub ctype: CommentType, 
+    pub argument: Option<String>, // optional argument, used for hashes etc
 }
 
 impl Specialcomment {
