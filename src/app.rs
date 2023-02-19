@@ -91,7 +91,12 @@ pub fn build_app() -> Command {
                         .value_parser(value_parser!(PathBuf)),
                 )
                 .arg(
-                    arg!(--section "section to delete")
+                    arg!(-p --print "only print result, do not write to file")
+                        .required(false)
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(
+                    arg!(-s --section "section to delete")
                         .required(true)
                         .action(ArgAction::Append)
                         .value_parser(value_parser!(String))

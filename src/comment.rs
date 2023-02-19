@@ -81,6 +81,7 @@ impl Specialcomment {
                         tmptype = CommentType::SourceInfo;
                         match cargument {
                             Some(_) => {
+                                println!("updating from source not implemented yet");
                                 //TODO do something
                                 //fetch from file/url/git
                             }
