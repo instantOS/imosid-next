@@ -19,6 +19,7 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
+// clap value parser does not distinguish between files and directories
 macro_rules! check_file_arg {
     ($a:expr) => {
         if !$a.is_file() {
@@ -26,6 +27,18 @@ macro_rules! check_file_arg {
             //TODO make this an error
             return Ok(());
         }
+    };
+}
+
+macro_rules! specialfile {
+    ($a:expr) => {
+        match Specialfile::from_pathbuf($a) {
+            Ok(file) => file,
+            Err(_) => {
+                eprintln!("could not open file {}", $a.to_str().unwrap().red());
+                return Ok(());
+            }
+        };
     };
 }
 
@@ -45,13 +58,7 @@ fn main() -> Result<(), std::io::Error> {
                 println!("compiled {}", &filename.to_str().unwrap().bold());
                 return Ok(());
             }
-            let mut compfile = match Specialfile::from_pathbuf(filename) {
-                Ok(file) => file,
-                Err(_) => {
-                    eprintln!("could not open file {}", filename.to_str().unwrap().red());
-                    return Ok(());
-                }
-            };
+            let mut compfile = specialfile!(filename);
             if compfile.compile() {
                 compfile.write_to_file();
                 println!("compiled {}", filename.to_str().unwrap().bold());
@@ -119,13 +126,9 @@ fn main() -> Result<(), std::io::Error> {
                 .map(|v| v.as_str())
                 .collect::<Vec<_>>();
             check_file_arg!(filename);
-            let queryfile = match Specialfile::from_pathbuf(filename) {
-                Ok(file) => file,
-                Err(_) => {
-                    eprintln!("could not open file {}", filename.to_str().unwrap().red());
-                    return Ok(());
-                }
-            };
+
+            let queryfile = specialfile!(filename);
+
             if queryfile.metafile.is_some() {
                 todo!("add message for this");
                 return Ok(());
@@ -154,13 +157,7 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut updatefile = match Specialfile::from_pathbuf(filename) {
-                Ok(file) => file,
-                Err(_) => {
-                    eprintln!("could not open file {}", filename.to_str().unwrap().red());
-                    return Ok(());
-                }
-            };
+            let mut updatefile = specialfile!(filename);
             updatefile.update();
 
             match updatefile.metafile {
@@ -187,13 +184,7 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut deletefile = match Specialfile::from_pathbuf(filename) {
-                Ok(file) => file,
-                Err(_) => {
-                    eprintln!("could not open file {}", filename.to_str().unwrap().red());
-                    return Ok(());
-                }
-            };
+            let mut deletefile = specialfile!(filename);
 
             for i in sections {
                 if deletefile.deletesection(i) {
@@ -239,13 +230,7 @@ fn main() -> Result<(), std::io::Error> {
                 }
                 return Ok(());
             } else if filename.is_file() {
-                let tmpsource = match Specialfile::from_pathbuf(filename) {
-                    Ok(file) => file,
-                    Err(_) => {
-                        eprintln!("could not open file {}", filename.to_str().unwrap().red());
-                        return Ok(());
-                    }
-                };
+                let tmpsource = specialfile!(filename);
                 tmpsource.apply();
             } else {
                 eprintln!("{}", "file does not exist".red().bold());
