@@ -55,6 +55,7 @@ impl Hashable for Metafile {
         }
     }
 }
+
 impl Metafile {
     fn new(path: PathBuf, content: &str) -> Option<Metafile> {
         if !path.is_file() {
@@ -265,10 +266,10 @@ pub struct Specialfile {
 impl Specialfile {
     pub fn new(filename: &str) -> Result<Specialfile, std::io::Error> {
         let filepath = PathBuf::from(filename);
-        Self::from(&filepath)
+        Self::from_pathbuf(&filepath)
     }
 
-    pub fn from(path: &PathBuf) -> Result<Specialfile, std::io::Error> {
+    pub fn from_pathbuf(path: &PathBuf) -> Result<Specialfile, std::io::Error> {
         let sourcepath = path
             .canonicalize()
             .expect("could not canonicalize path")
@@ -519,6 +520,16 @@ impl Specialfile {
 
             return Ok(retfile);
         }
+    }
+
+    pub fn count_named_sections(&self) -> u32 {
+        let mut counter = 0;
+        for i in &self.sections {
+            if !i.is_anonymous() {
+                counter += 1;
+            }
+        }
+        counter
     }
 
     pub fn update(&mut self) {

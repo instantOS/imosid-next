@@ -45,7 +45,7 @@ fn main() -> Result<(), std::io::Error> {
                 println!("compiled {}", &filename.to_str().unwrap().bold());
                 return Ok(());
             }
-            let mut compfile = match Specialfile::from(filename) {
+            let mut compfile = match Specialfile::from_pathbuf(filename) {
                 Ok(file) => file,
                 Err(_) => {
                     eprintln!("could not open file {}", filename.to_str().unwrap().red());
@@ -80,7 +80,7 @@ fn main() -> Result<(), std::io::Error> {
                 {
                     continue;
                 }
-                let checkfile = match Specialfile::from(&entrypath) {
+                let checkfile = match Specialfile::from_pathbuf(&entrypath) {
                     Ok(file) => file,
                     Err(_) => {
                         eprintln!("could not open file {}", entrypath.to_str().unwrap().red());
@@ -119,7 +119,7 @@ fn main() -> Result<(), std::io::Error> {
                 .map(|v| v.as_str())
                 .collect::<Vec<_>>();
             check_file_arg!(filename);
-            let queryfile = match Specialfile::from(filename) {
+            let queryfile = match Specialfile::from_pathbuf(filename) {
                 Ok(file) => file,
                 Err(_) => {
                     eprintln!("could not open file {}", filename.to_str().unwrap().red());
@@ -154,7 +154,7 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut updatefile = match Specialfile::from(filename) {
+            let mut updatefile = match Specialfile::from_pathbuf(filename) {
                 Ok(file) => file,
                 Err(_) => {
                     eprintln!("could not open file {}", filename.to_str().unwrap().red());
@@ -187,7 +187,7 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut deletefile = match Specialfile::from(filename) {
+            let mut deletefile = match Specialfile::from_pathbuf(filename) {
                 Ok(file) => file,
                 Err(_) => {
                     eprintln!("could not open file {}", filename.to_str().unwrap().red());
@@ -217,7 +217,7 @@ fn main() -> Result<(), std::io::Error> {
                     {
                         continue;
                     }
-                    let tmpsource = match Specialfile::from(&entry.path().to_path_buf()) {
+                    let tmpsource = match Specialfile::from_pathbuf(&entry.path().to_path_buf()) {
                         Ok(file) => file,
                         Err(_) => {
                             eprintln!(
@@ -239,7 +239,7 @@ fn main() -> Result<(), std::io::Error> {
                 }
                 return Ok(());
             } else if filename.is_file() {
-                let tmpsource = match Specialfile::from(filename) {
+                let tmpsource = match Specialfile::from_pathbuf(filename) {
                     Ok(file) => file,
                     Err(_) => {
                         eprintln!("could not open file {}", filename.to_str().unwrap().red());
@@ -255,7 +255,7 @@ fn main() -> Result<(), std::io::Error> {
         Some(("info", info_matches)) => {
             let filename = info_matches.get_one::<PathBuf>("file").unwrap();
             check_file_arg!(filename);
-            let infofile = Specialfile::from(filename)?;
+            let infofile = Specialfile::from_pathbuf(filename)?;
             match &infofile.metafile {
                 None => {
                     println!("comment syntax: {}", &infofile.commentsign);

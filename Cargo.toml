@@ -23,6 +23,8 @@ sha256 = "1.1.1"
 semver = "1.0.14"
 walkdir = "2.3.2"
 toml = "0.5.9"
+tempdir = "0.3.7"
+
 [dependencies.clap]
 version = "4.0.29"
 features = ["cargo"]

@@ -4,13 +4,13 @@ use sha256::digest;
 
 #[derive(Clone)]
 pub struct Section {
-    pub startline: u32,
-    pub name: Option<String>,
-    pub source: Option<String>,
-    pub endline: u32,
-    pub hash: String,
-    targethash: Option<String>,
-    pub content: String,
+    pub startline: u32, // line number section starts at in file
+    pub name: Option<String>, // section name, None if anonymous
+    pub source: Option<String>, // source to update section from
+    pub endline: u32, // line number section ends at in file
+    pub hash: String, // current hash of section
+    targethash: Option<String>, // hash section should have if unmodified
+    pub content: String, 
     pub modified: bool,
 }
 
@@ -35,9 +35,8 @@ impl Hashable for Section {
 
     /// generate section hash
     /// and detect section status
-    // TODO remove horrible cloning
     fn finalize(&mut self) {
-        let newhash = digest(self.content.clone()).to_uppercase();
+        let newhash = digest(self.content.as_str()).to_uppercase();
         match &self.name {
             Some(_) => {
                 if self.hash == newhash {
