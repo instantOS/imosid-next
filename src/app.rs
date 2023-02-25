@@ -76,7 +76,8 @@ pub fn build_app() -> Command {
             Command::new("apply")
                 .about("apply source to target marked in the file")
                 .arg(
-                    arg!(--file "file to apply")
+                    Arg::new("file")
+                        .help("file or directory to apply")
                         .required(true)
                         .value_parser(value_parser!(PathBuf)),
                 ),
