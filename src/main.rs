@@ -1,13 +1,14 @@
 mod app;
+mod dotwalker;
 mod test;
 use colored::Colorize;
+use dotwalker::walkdots;
 mod comment;
 mod contentline;
 mod files;
 mod hashable;
 mod section;
 use std::path::PathBuf;
-use walkdir::WalkDir;
 
 use crate::{
     files::{ApplyResult, Metafile, Specialfile},
@@ -79,14 +80,8 @@ fn main() -> Result<(), std::io::Error> {
                 return Ok(());
             }
             let mut anymodified = false;
-            for entry in WalkDir::new(filename).into_iter().filter_map(|e| e.ok()) {
+            for entry in walkdots(filename) {
                 let entrypath = entry.path().to_path_buf();
-                if entrypath.is_dir()
-                    || entry.path().to_str().unwrap().ends_with("imosid.toml")
-                    || entry.path().to_str().unwrap().contains("/.git/")
-                {
-                    continue;
-                }
                 let checkfile = match Specialfile::from_pathbuf(&entrypath) {
                     Ok(file) => file,
                     Err(_) => {
@@ -200,14 +195,10 @@ fn main() -> Result<(), std::io::Error> {
             let mut donesomething = false;
             let filename = apply_matches.get_one::<PathBuf>("file").unwrap();
             if filename.is_dir() {
-                for entry in WalkDir::new(filename).into_iter().filter_map(|e| e.ok()) {
+                for entry in walkdots(filename)
+                {
                     let entrypath = entry.path().to_path_buf();
-                    if entrypath.is_dir()
-                        || entry.path().ends_with(".imosid.toml")
-                        || entry.path().to_str().unwrap().contains("/.git/")
-                    {
-                        continue;
-                    }
+                    let entrystring = entry.path().to_str();
                     let tmpsource = match Specialfile::from_pathbuf(&entry.path().to_path_buf()) {
                         Ok(file) => file,
                         Err(_) => {
