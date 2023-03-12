@@ -11,6 +11,7 @@ mod section;
 use std::path::PathBuf;
 
 use crate::{
+    app::get_vec_args,
     files::{ApplyResult, Metafile, Specialfile},
     hashable::Hashable,
 };
@@ -114,12 +115,8 @@ fn main() -> Result<(), std::io::Error> {
 
         Some(("query", query_matches)) => {
             let filename = query_matches.get_one::<PathBuf>("file").unwrap();
-            // this looks bad
-            let sections = query_matches
-                .get_many::<String>("section")
-                .unwrap_or_default()
-                .map(|v| v.as_str())
-                .collect::<Vec<_>>();
+            let sections = get_vec_args(query_matches, "section");
+
             check_file_arg!(filename);
 
             let queryfile = specialfile!(filename);
@@ -143,12 +140,7 @@ fn main() -> Result<(), std::io::Error> {
         Some(("update", update_matches)) => {
             let filename = update_matches.get_one::<PathBuf>("file").unwrap();
 
-            // this looks bad
-            let sections = update_matches
-                .get_many::<String>("section")
-                .unwrap_or_default()
-                .map(|v| v.as_str())
-                .collect::<Vec<_>>();
+            let sections = get_vec_args(update_matches, "section");
 
             check_file_arg!(filename);
 
@@ -170,12 +162,7 @@ fn main() -> Result<(), std::io::Error> {
         Some(("delete", delete_matches)) => {
             let filename = delete_matches.get_one::<PathBuf>("file").unwrap();
 
-            // this looks bad
-            let sections = delete_matches
-                .get_many::<String>("section")
-                .unwrap_or_default()
-                .map(|v| v.as_str())
-                .collect::<Vec<_>>();
+            let sections = get_vec_args(delete_matches, "section");
 
             check_file_arg!(filename);
 
@@ -195,8 +182,7 @@ fn main() -> Result<(), std::io::Error> {
             let mut donesomething = false;
             let filename = apply_matches.get_one::<PathBuf>("file").unwrap();
             if filename.is_dir() {
-                for entry in walkdots(filename)
-                {
+                for entry in walkdots(filename) {
                     let entrypath = entry.path().to_path_buf();
                     let entrystring = entry.path().to_str();
                     let tmpsource = match Specialfile::from_pathbuf(&entry.path().to_path_buf()) {

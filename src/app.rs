@@ -1,5 +1,14 @@
-use clap::{arg, command, value_parser, Arg, ArgAction, ColorChoice, Command};
+use clap::{arg, command, value_parser, Arg, ArgAction, ArgMatches, ColorChoice, Command};
 use std::path::PathBuf;
+
+pub fn get_vec_args<'a>(matches: &'a ArgMatches, name: &str) -> Vec<&'a str> {
+    let sections = matches
+        .get_many::<String>(name)
+        .unwrap_or_default()
+        .map(|v| v.as_str())
+        .collect::<Vec<_>>();
+    return sections;
+}
 
 pub fn build_app() -> Command {
     command!()
