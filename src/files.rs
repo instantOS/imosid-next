@@ -1,7 +1,7 @@
 use crate::built_info;
 use crate::comment::{CommentType, Specialcomment};
 use crate::contentline::ContentLine;
-use crate::hashable::Hashable;
+use crate::hashable::{Hashable, CompileResult};
 use crate::section::Section;
 use colored::Colorize;
 use regex::Regex;
@@ -44,14 +44,14 @@ impl Hashable for Metafile {
         self.modified = self.hash != self.get_content_hash();
     }
 
-    fn compile(&mut self) -> bool {
+    fn compile(&mut self) -> CompileResult {
         let contenthash = self.get_content_hash();
         self.modified = false;
         if self.hash == contenthash {
-            false
+            CompileResult::Unchanged
         } else {
             self.hash = contenthash;
-            true
+            CompileResult::Changed
         }
     }
 }
@@ -623,11 +623,11 @@ impl Specialfile {
         match &mut self.metafile {
             None => {
                 for i in 0..self.sections.len() {
-                    didsomething = self.sections[i].compile() || didsomething;
+                    didsomething = self.sections[i].compile().into() || didsomething;
                 }
             }
             Some(metafile) => {
-                didsomething = metafile.compile();
+                didsomething = metafile.compile().into();
             }
         }
         didsomething

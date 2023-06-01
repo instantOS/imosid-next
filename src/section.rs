@@ -1,16 +1,16 @@
 // use crate::comment;
-use crate::hashable::Hashable;
+use crate::hashable::{CompileResult, Hashable};
 use sha256::digest;
 
 #[derive(Clone)]
 pub struct Section {
-    pub startline: u32, // line number section starts at in file
-    pub name: Option<String>, // section name, None if anonymous
+    pub startline: u32,         // line number section starts at in file
+    pub name: Option<String>,   // section name, None if anonymous
     pub source: Option<String>, // source to update section from
-    pub endline: u32, // line number section ends at in file
-    pub hash: String, // current hash of section
+    pub endline: u32,           // line number section ends at in file
+    pub hash: String,           // current hash of section
     targethash: Option<String>, // hash section should have if unmodified
-    pub content: String, 
+    pub content: String,
     pub modified: bool,
 }
 
@@ -18,37 +18,33 @@ impl Hashable for Section {
     /// set target hash to current hash
     /// marking the section as unmodified
     /// return false if nothing has changed
-    fn compile(&mut self) -> bool {
-        match &self.targethash {
+    fn compile(&mut self) -> CompileResult {
+        let changed = match &self.targethash {
             Some(hash) => {
                 if hash.to_string() == self.hash {
-                    return false;
+                    CompileResult::Unchanged
+                } else {
+                    CompileResult::Changed
                 }
             }
             None => {
-                return !self.is_anonymous();
+                if self.is_anonymous() {
+                    CompileResult::Unchanged
+                } else {
+                    CompileResult::Changed
+                }
             }
-        }
-        self.targethash = Option::Some(self.hash.clone());
-        true
+        };
+        self.targethash = Some(self.hash.clone());
+        changed
     }
 
     /// generate section hash
     /// and detect section status
     fn finalize(&mut self) {
         let newhash = digest(self.content.as_str()).to_uppercase();
-        match &self.name {
-            Some(_) => {
-                if self.hash == newhash {
-                    self.modified = false;
-                } else {
-                    self.modified = true;
-                }
-            }
-            // anonymous section
-            None => {
-                self.hash = newhash.clone();
-            }
+        if let Some(name) = &self.name {
+            self.modified = self.hash != newhash;
         }
         self.hash = newhash;
     }
@@ -80,7 +76,7 @@ impl Section {
     /// anonymous sections are sections without marker comments
     /// e.g. parts not tracked by imosid
     pub fn is_anonymous(&self) -> bool {
-        return self.name.is_none();
+        self.name.is_none()
     }
 
     /// append string to content
@@ -91,35 +87,30 @@ impl Section {
 
     /// return entire section with formatted marker comments and content
     pub fn output(&self, commentsign: &str) -> String {
-        let mut outstr = String::new();
         match &self.name {
             Some(name) => {
+                let mut outstr = String::new();
                 outstr.push_str(&format!("{}... {} begin\n", commentsign, name));
                 outstr.push_str(&format!(
                     "{}... {} hash {}\n",
                     commentsign,
                     name,
-                    if self.targethash.is_some() {
-                        self.targethash.clone().unwrap()
+                    if let Some(targethash) = self.targethash.clone() {
+                        targethash
                     } else {
                         self.hash.clone()
                     }
                 ));
-                match &self.source {
-                    Some(source) => {
-                        outstr.push_str(&format!("{}... {} begin\n", commentsign, source));
-                    }
-                    None => {}
-                } //todo: section target
+                if let Some(source) = &self.source {
+                    outstr.push_str(&format!("{}... {} source {}\n", commentsign, name, source));
+                }
+                //todo: section target
                 outstr.push_str(&self.content);
                 outstr.push_str(&format!("{}... {} end\n", commentsign, name));
+                outstr
             }
             // anonymous section
-            None => {
-                outstr = self.content.clone();
-                return outstr;
-            }
+            None => self.content.clone(),
         }
-        return outstr;
     }
 }
