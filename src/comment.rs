@@ -20,6 +20,20 @@ pub struct Specialcomment {
 }
 
 impl Specialcomment {
+    pub fn type_from_keyword(keyword: &str) -> Option<CommentType> {
+        Some(match keyword {
+            "begin" | "start" => CommentType::SectionBegin,
+            "end" | "stop" => CommentType::SectionEnd,
+            "hash" => CommentType::HashInfo,
+            "source" => CommentType::SourceInfo,
+            "permissions" => CommentType::PermissionInfo,
+            "target" => CommentType::TargetInfo,
+            &_ => {
+                return Option::None;
+            }
+        })
+    }
+
     pub fn new(line: &str, commentsymbol: &str, linenumber: u32) -> Option<Specialcomment> {
         if !line.starts_with(commentsymbol) {
             return Option::None;
@@ -56,25 +70,19 @@ impl Specialcomment {
             };
 
             let tmptype: CommentType;
-            match keyword {
-                "begin" | "start" => {
-                    tmptype = CommentType::SectionBegin;
-                }
-                "end" | "stop" => {
-                    tmptype = CommentType::SectionEnd;
-                }
-                "hash" => {
-                    tmptype = CommentType::HashInfo;
+            tmptype = Specialcomment::type_from_keyword(keyword)?;
+            match tmptype {
+                CommentType::HashInfo => {
                     if cargument == None {
                         println!("missing hash value on line {}", linenumber);
                         return Option::None;
                     }
                 }
-                "source" => {
-                    tmptype = CommentType::SourceInfo;
+                CommentType::SourceInfo => {
                     match cargument {
                         Some(_) => {
                             println!("updating from source not implemented yet");
+                            unimplemented!();
                             //TODO do something
                             //fetch from file/url/git
                         }
@@ -84,7 +92,7 @@ impl Specialcomment {
                         }
                     }
                 }
-                "permissions" => {
+                CommentType::PermissionInfo => {
                     // permissioms can only be set for the entire file
                     if sectionname != "all" {
                         return Option::None;
@@ -98,15 +106,12 @@ impl Specialcomment {
                             Err(_) => {
                                 return Option::None;
                             }
-                            Ok(_) => {
-                                tmptype = CommentType::PermissionInfo;
-                            }
+                            Ok(_) => {}
                         },
                     }
                 }
-                "target" => {
+                CommentType::TargetInfo => {
                     if sectionname == "all" {
-                        tmptype = CommentType::TargetInfo;
                         if cargument == None {
                             println!("missing target value on line {}", linenumber);
                             return Option::None;
@@ -119,8 +124,7 @@ impl Specialcomment {
                         return Option::None;
                     }
                 }
-
-                &_ => {
+                _ => {
                     println!("warning: incomplete imosid comment on {}", linenumber);
                     return Option::None;
                 }

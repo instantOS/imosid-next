@@ -1,7 +1,7 @@
 use crate::built_info;
 use crate::comment::{CommentType, Specialcomment};
 use crate::contentline::ContentLine;
-use crate::hashable::{Hashable, CompileResult};
+use crate::hashable::{CompileResult, Hashable};
 use crate::section::Section;
 use colored::Colorize;
 use regex::Regex;
@@ -11,10 +11,11 @@ use std::collections::HashMap;
 use std::env::home_dir;
 use std::ffi::OsStr;
 use std::fs::{self, read_to_string, File, OpenOptions};
-use std::io::{self, prelude::*, ErrorKind};
+use std::io::{self, prelude::*, Error, ErrorKind};
 use std::ops::Deref;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::string::String;
 use toml::Value;
 
 // a file containing metadata about an imosid file for file types which do not support comments
@@ -58,77 +59,64 @@ impl Hashable for Metafile {
 
 impl Metafile {
     fn new(path: PathBuf, content: &str) -> Option<Metafile> {
-        if !path.is_file() {
-            return None;
-        }
-        let metacontent = read_to_string(&path);
-        match metacontent {
-            Err(_) => {
-                return None;
-            }
-            Ok(mcontent) => {
-                let value = mcontent.parse::<Value>().expect("failed to read toml");
+        let mcontent = read_to_string(&path).unwrap();
+        let value = mcontent.parse::<Value>().expect("failed to read toml");
 
-                let mut retfile = Metafile {
-                    targetfile: None,
-                    sourcefile: None,
-                    hash: String::from(""),
-                    parentfile: String::from(""),
-                    // default version strings
-                    imosidversion: Version::new(0, 0, 0),
-                    syntaxversion: 1,
-                    value: value.clone(),
-                    content: String::from(content),
-                    modified: false,
-                    permissions: Option::None,
-                    path,
-                };
-
-                // hash and parent are mandatory
-                if let Some(Value::String(hash)) = value.get("hash") {
-                    retfile.hash = String::from(hash);
-                } else {
-                    return None;
-                }
-
-                if let Some(Value::String(parentfile)) = value.get("parent") {
-                    retfile.parentfile = String::from(parentfile);
-                } else {
-                    return None;
-                }
-
-                if let Some(Value::String(targetfile)) = value.get("target") {
-                    retfile.targetfile = Some(String::from(targetfile));
-                }
-
-                if let Some(Value::String(sourcefile)) = value.get("source") {
-                    retfile.sourcefile = Some(String::from(sourcefile));
-                }
-
-                if let Some(Value::Integer(permissions)) = value.get("permissions") {
-                    //TODO check if permissions smaller than 777
-                    retfile.permissions = Some(*permissions as u32);
-                }
-
-                if let Some(Value::Integer(syntaxversion)) = value.get("syntaxversion") {
-                    retfile.syntaxversion = syntaxversion.clone();
-                }
-
-                if let Some(Value::String(imosidversion)) = value.get("imosidversion") {
-                    if let Ok(version) = Version::parse(imosidversion) {
-                        retfile.imosidversion = version;
-                    }
-                }
-
-                return Some(retfile);
-            }
+        let mut retfile = Metafile {
+            targetfile: None,
+            sourcefile: None,
+            hash: String::from(""),
+            parentfile: String::from(""),
+            // default version strings
+            imosidversion: Version::new(0, 0, 0),
+            syntaxversion: 1,
+            value: value.clone(),
+            content: String::from(content),
+            modified: false,
+            permissions: Option::None,
+            path,
         };
+
+        // hash and parent are mandatory
+        retfile.hash = value.get("hash")?.as_str()?.to_string();
+        retfile.parentfile = value.get("parent")?.as_str()?.to_string();
+
+        if let Some(Value::String(targetfile)) = value.get("target") {
+            retfile.targetfile = Some(String::from(targetfile));
+        }
+
+        if let Some(Value::String(sourcefile)) = value.get("source") {
+            retfile.sourcefile = Some(String::from(sourcefile));
+        }
+
+        if let Some(Value::Integer(permissions)) = value.get("permissions") {
+            //TODO check if permissions smaller than 777
+            retfile.permissions = Some(*permissions as u32);
+        }
+
+        if let Some(Value::Integer(syntaxversion)) = value.get("syntaxversion") {
+            retfile.syntaxversion = syntaxversion.clone();
+        }
+
+        if let Some(Value::String(imosidversion)) = value.get("imosidversion") {
+            if let Ok(version) = Version::parse(imosidversion) {
+                retfile.imosidversion = version;
+            }
+        }
+
+        Some(retfile)
     }
 
+    fn get_parent_file(&self) -> PathBuf {
+        let mut path = self.path.clone();
+        path.push(&self.parentfile);
+        path.pop();
+        path
+    }
+
+    // TODO incorporate this inro normal write
     fn write_permissions(&self) {
-        let mut parentpath = self.path.clone();
-        parentpath.pop();
-        parentpath.push(&self.parentfile);
+        let parentpath = self.get_parent_file();
         if let Some(permissions) = &self.permissions {
             let mut perms = fs::metadata(&parentpath).unwrap().permissions();
             let permint = u32::from_str_radix(&format!("{}", permissions + 1000000), 8).unwrap();
@@ -141,7 +129,10 @@ impl Metafile {
 
     // create a new metafile for a file
     // TODO maybe return result?
-    pub fn from(mut path: PathBuf) -> Metafile {
+    // TODO split this up, this doesn't need to write to disk
+    pub fn from(sourcepath: PathBuf) -> Metafile {
+        let mut path = sourcepath.clone();
+        //
         //TODO handle result
         let filecontent =
             read_to_string(&path).expect("could not read file content to create metafile");
@@ -154,7 +145,6 @@ impl Metafile {
             .unwrap();
 
         //TODO don't create metafiles for metafiles
-
         let filename = format!("{}.imosid.toml", parentname);
 
         path.pop();
@@ -196,18 +186,13 @@ impl Metafile {
     // populate toml value with data
     fn update(&mut self) {
         let mut selfmap = toml::map::Map::new();
-        selfmap.insert(
-            String::from("hash"),
-            Value::String(String::from(&self.hash)),
-        );
-        selfmap.insert(
-            String::from("parent"),
-            Value::String(String::from(&self.parentfile)),
-        );
+        selfmap.insert("hash".into(), Value::String((&self.hash).to_string()));
+        selfmap.insert("parent".into(), Value::String((&self.parentfile).into()));
+
         if let Some(targetfile) = &self.targetfile {
             selfmap.insert(
                 String::from("target"),
-                Value::String(String::from(targetfile)),
+                Value::String(targetfile.to_string()),
             );
         }
         if let Some(sourcefile) = &self.sourcefile {
@@ -217,6 +202,7 @@ impl Metafile {
             );
         }
 
+        // TODO: store syntax version somewhere central
         selfmap.insert(String::from("syntaxversion"), Value::Integer(0));
 
         selfmap.insert(
@@ -280,6 +266,7 @@ impl Specialfile {
             Err(e) => {
                 if e.kind() == ErrorKind::PermissionDenied {
                     // open file as readonly if writing is not permitted
+                    // TODO: skip readonly files entirely
                     match OpenOptions::new().read(true).write(false).open(path) {
                         Ok(file) => file,
                         Err(error) => return Err(error),
@@ -338,6 +325,7 @@ impl Specialfile {
             for i in filelines {
                 counter += 1;
                 let line = i?;
+                // TODO: move out of for loop?
                 if !hascommentsign {
                     commentsign = String::from(get_comment_sign(&sourcepath, &line));
                     hascommentsign = true;
