@@ -330,7 +330,7 @@ impl Specialfile {
                     commentsign = String::from(get_comment_sign(&sourcepath, &line));
                     hascommentsign = true;
                 }
-                let newcomment = Specialcomment::new(&line, &commentsign, counter);
+                let newcomment = Specialcomment::from_line(&line, &commentsign, counter);
                 match newcomment {
                     Some(comment) => {
                         // comments with section all apply to the entire file

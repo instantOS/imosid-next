@@ -32,14 +32,14 @@ echo \"content of the second section\"
 
     #[test]
     fn test_comment() {
-        let comment = Specialcomment::new("#...tester begin", "#", 20).unwrap();
+        let comment = Specialcomment::from_line("#...tester begin", "#", 20).unwrap();
         assert_eq!(comment.line, 20);
         assert_eq!(comment.section.as_str(), "tester");
     }
 
     #[test]
     fn test_comment_argument() {
-        let comment = Specialcomment::new("#...helloworold hash abcdefghijk", "#", 21).unwrap();
+        let comment = Specialcomment::from_line("#...helloworold hash abcdefghijk", "#", 21).unwrap();
         assert_eq!(comment.line, 21);
         assert_eq!(comment.ctype, CommentType::HashInfo);
         assert_eq!(comment.section.as_str(), "helloworold");

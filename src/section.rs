@@ -43,7 +43,7 @@ impl Hashable for Section {
     /// and detect section status
     fn finalize(&mut self) {
         let newhash = digest(self.content.as_str()).to_uppercase();
-        if let Some(name) = &self.name {
+        if self.name.is_some() {
             self.modified = self.hash != newhash;
         }
         self.hash = newhash;

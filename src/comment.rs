@@ -34,7 +34,7 @@ impl Specialcomment {
         })
     }
 
-    pub fn new(line: &str, commentsymbol: &str, linenumber: u32) -> Option<Specialcomment> {
+    pub fn from_line(line: &str, commentsymbol: &str, linenumber: u32) -> Option<Specialcomment> {
         if !line.starts_with(commentsymbol) {
             return Option::None;
         }
@@ -79,17 +79,14 @@ impl Specialcomment {
                     }
                 }
                 CommentType::SourceInfo => {
-                    match cargument {
-                        Some(_) => {
-                            println!("updating from source not implemented yet");
-                            unimplemented!();
-                            //TODO do something
-                            //fetch from file/url/git
-                        }
-                        None => {
-                            println!("missing source file on line {}", linenumber);
-                            return Option::None;
-                        }
+                    if cargument.is_some() {
+                        println!("updating from source not implemented yet");
+                        unimplemented!();
+                        //TODO do something
+                        //fetch from file/url/git
+                    } else {
+                        println!("missing source file on line {}", linenumber);
+                        return Option::None;
                     }
                 }
                 CommentType::PermissionInfo => {
