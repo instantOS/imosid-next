@@ -10,17 +10,8 @@ pub enum CommentType {
     PermissionInfo,
 }
 
-#[derive(Clone)]
-pub struct Specialcomment {
-    pub line: u32, // line number comment is at in file
-    content: String,
-    pub section: String, // section name extracted from prefix
-    pub ctype: CommentType,
-    pub argument: Option<String>, // optional argument, used for hashes etc
-}
-
-impl Specialcomment {
-    pub fn type_from_keyword(keyword: &str) -> Option<CommentType> {
+impl CommentType {
+    pub fn from_keyword(keyword: &str) -> Option<CommentType> {
         Some(match keyword {
             "begin" | "start" => CommentType::SectionBegin,
             "end" | "stop" => CommentType::SectionEnd,
@@ -32,6 +23,48 @@ impl Specialcomment {
                 return Option::None;
             }
         })
+    }
+}
+
+impl Into<String> for CommentType {
+    fn into(self) -> String {
+        String::from(match self {
+            CommentType::SectionBegin => "begin",
+            CommentType::SectionEnd => "end",
+            CommentType::SourceInfo => "source",
+            CommentType::TargetInfo => "target",
+            CommentType::HashInfo => "hash",
+            CommentType::PermissionInfo => "permissions",
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct Specialcomment {
+    pub line: u32,       // line number comment is at in file
+    pub section: String, // section name extracted from prefix
+    pub comment_type: CommentType,
+    pub argument: Option<String>, // optional argument, used for hashes etc
+}
+
+impl Specialcomment {
+    pub fn new_string(
+        commentsymbol: &str,
+        ctype: CommentType,
+        section_name: &str,
+        argument: Option<&str>,
+    ) -> String {
+        format!(
+            "{}... {} {}{}\n",
+            commentsymbol,
+            section_name,
+            Into::<String>::into(ctype),
+            if argument.is_some() {
+                format!(" {}", argument.unwrap())
+            } else {
+                String::from("")
+            }
+        )
     }
 
     pub fn from_line(line: &str, commentsymbol: &str, linenumber: u32) -> Option<Specialcomment> {
@@ -70,7 +103,7 @@ impl Specialcomment {
             };
 
             let tmptype: CommentType;
-            tmptype = Specialcomment::type_from_keyword(keyword)?;
+            tmptype = CommentType::from_keyword(keyword)?;
             match tmptype {
                 CommentType::HashInfo => {
                     if cargument == None {
@@ -129,9 +162,8 @@ impl Specialcomment {
 
             return Some(Specialcomment {
                 line: linenumber,
-                content: String::from(line),
                 section: String::from(sectionname),
-                ctype: tmptype,
+                comment_type: tmptype,
                 argument: cargument,
             });
         };

@@ -121,7 +121,7 @@ impl DotFile {
                     Some(comment) => {
                         // comments with section all apply to the entire file
                         if &comment.section == "all" {
-                            match &comment.ctype {
+                            match &comment.comment_type {
                                 CommentType::TargetInfo => {
                                     if comment.argument.is_some() {
                                         targetfile =
@@ -161,10 +161,10 @@ impl DotFile {
                 let mut checkmap = HashMap::new();
                 // sections cannot have multiple hashes, beginnings etc
                 for i in svector.iter() {
-                    if checkmap.contains_key(&i.ctype) {
+                    if checkmap.contains_key(&i.comment_type) {
                         break;
                     } else {
-                        checkmap.insert(&i.ctype, i);
+                        checkmap.insert(&i.comment_type, i);
                     }
                 }
                 if !(checkmap.contains_key(&CommentType::SectionBegin)

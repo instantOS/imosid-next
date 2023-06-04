@@ -41,7 +41,7 @@ echo \"content of the second section\"
     fn test_comment_argument() {
         let comment = Specialcomment::from_line("#...helloworold hash abcdefghijk", "#", 21).unwrap();
         assert_eq!(comment.line, 21);
-        assert_eq!(comment.ctype, CommentType::HashInfo);
+        assert_eq!(comment.comment_type, CommentType::HashInfo);
         assert_eq!(comment.section.as_str(), "helloworold");
         assert_eq!(comment.argument.unwrap().as_str(), "abcdefghijk");
     }
