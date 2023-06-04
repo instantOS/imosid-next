@@ -8,10 +8,9 @@ use regex::Regex;
 use semver::Version;
 use sha256::digest;
 use std::collections::HashMap;
-use std::env::home_dir;
 use std::ffi::OsStr;
 use std::fs::{self, read_to_string, File, OpenOptions};
-use std::io::{self, prelude::*, Error, ErrorKind};
+use std::io::{self, prelude::*, ErrorKind};
 use std::ops::Deref;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -1081,8 +1080,7 @@ pub fn expand_tilde(input: &str) -> String {
     if retstr.starts_with("~/") {
         retstr = String::from(format!(
             "{}/{}",
-            //TODO replace deprecated home_dir
-            home_dir().unwrap().into_os_string().into_string().unwrap(),
+            home::home_dir().unwrap().into_os_string().into_string().unwrap(),
             retstr.strip_prefix("~/").unwrap()
         ));
     }

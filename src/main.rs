@@ -40,7 +40,7 @@ macro_rules! specialfile {
                 eprintln!("could not open file {}", $a.to_str().unwrap().red());
                 return Ok(());
             }
-        };
+        }
     };
 }
 
