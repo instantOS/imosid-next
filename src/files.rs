@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
 
-use std::io::{self, ErrorKind};
 use std::io::prelude::*;
+use std::io::{self, ErrorKind};
 use std::ops::Deref;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -66,27 +66,27 @@ impl DotFile {
 
         let metafile;
 
-        let mut commentvector = Vec::new();
-        let mut counter = 0;
+        let mut comments = Vec::new();
+        let mut line_counter = 0;
 
-        let mut sectionvector: Vec<Section> = Vec::new();
-        let mut contentvector: Vec<ContentLine> = Vec::new();
+        let mut sections: Vec<Section> = Vec::new();
+        let mut lines: Vec<ContentLine> = Vec::new();
 
-        let mut sectionmap: HashMap<String, Vec<Specialcomment>> = HashMap::new();
+        let mut section_map: HashMap<String, Vec<Specialcomment>> = HashMap::new();
 
-        let mut targetfile: Option<String> = Option::None;
+        let mut target_file: Option<String> = Option::None;
         let mut permissions = Option::None;
         let mut commentsign = String::new();
         let mut hascommentsign = false;
 
         // check for metafile
         if Path::new(&format!("{}.imosid.toml", sourcepath)).is_file() {
-            let mut contentstring = String::new();
-            io::BufReader::new(&sourcefile).read_to_string(&mut contentstring)?;
+            let mut content = String::new();
+            io::BufReader::new(&sourcefile).read_to_string(&mut content)?;
 
             metafile = if let Some(mut metafile) = MetaFile::new(
                 PathBuf::from(&format!("{}.imosid.toml", sourcepath)),
-                &contentstring,
+                &content,
             ) {
                 metafile.finalize();
                 metafile
@@ -94,8 +94,8 @@ impl DotFile {
                 return Err(std::io::Error::new(ErrorKind::Other, "invalid metafile"));
             };
             return Ok(DotFile {
-                specialcomments: commentvector,
-                sections: sectionvector,
+                specialcomments: comments,
+                sections,
                 file: sourcefile,
                 filename: sourcepath,
                 targetfile: metafile.targetfile.clone(),
@@ -104,196 +104,185 @@ impl DotFile {
                 metafile: Some(metafile),
                 commentsign: String::from(""),
             });
-        } else {
-            let filelines = io::BufReader::new(&sourcefile).lines();
-
-            // parse lines for special comments
-            for i in filelines {
-                counter += 1;
-                let line = i?;
-                // TODO: move out of for loop?
-                if !hascommentsign {
-                    commentsign = String::from(get_comment_sign(&sourcepath, &line));
-                    hascommentsign = true;
-                }
-                let newcomment = Specialcomment::from_line(&line, &commentsign, counter);
-                match newcomment {
-                    Some(comment) => {
-                        // comments with section all apply to the entire file
-                        if &comment.section == "all" {
-                            match &comment.comment_type {
-                                CommentType::TargetInfo => {
-                                    if comment.argument.is_some() {
-                                        targetfile =
-                                            Option::Some(String::from(&comment.argument.unwrap()));
-                                    }
+        }
+        let filelines = io::BufReader::new(&sourcefile).lines();
+        // parse lines for special comments
+        for i in filelines {
+            line_counter += 1;
+            let line = i?;
+            // TODO: Do this better
+            if !hascommentsign {
+                commentsign = String::from(get_comment_sign(&sourcepath, &line));
+                hascommentsign = true;
+            }
+            let newcomment = Specialcomment::from_line(&line, &commentsign, line_counter);
+            match newcomment {
+                Some(comment) => {
+                    // comments with section all apply to the entire file
+                    //TODO: move checking into comment from_line
+                    if &comment.section == "all" {
+                        match &comment.comment_type {
+                            CommentType::TargetInfo => {
+                                if comment.argument.is_some() {
+                                    target_file =
+                                        Option::Some(String::from(&comment.argument.unwrap()));
                                 }
-                                CommentType::PermissionInfo => {
-                                    if let Some(arg) = comment.argument {
-                                        permissions = match arg.split_at(3).1.parse::<u32>() {
-                                            Err(_) => Option::None,
-                                            Ok(permnumber) => Option::Some(permnumber),
-                                        }
-                                    }
-                                }
-                                &_ => {}
                             }
-                            continue;
+                            CommentType::PermissionInfo => {
+                                if let Some(arg) = comment.argument {
+                                    permissions = match arg.split_at(3).1.parse::<u32>() {
+                                        Err(_) => Option::None,
+                                        Ok(permnumber) => Option::Some(permnumber),
+                                    }
+                                }
+                            }
+                            &_ => {}
                         }
-                        commentvector.push(comment.clone());
-                        if sectionmap.contains_key(&comment.section) {
-                            sectionmap.get_mut(&comment.section).unwrap().push(comment);
-                        } else {
-                            let mut sectionvector = Vec::new();
-                            sectionvector.push(comment.clone());
-                            sectionmap.insert(comment.section, sectionvector);
-                        }
-                    }
-                    None => contentvector.push(ContentLine {
-                        linenumber: counter,
-                        content: line,
-                    }),
-                }
-            }
-
-            // validate sections and initialze section structs
-            for (sectionname, svector) in sectionmap.iter() {
-                let mut checkmap = HashMap::new();
-                // sections cannot have multiple hashes, beginnings etc
-                for i in svector.iter() {
-                    if checkmap.contains_key(&i.comment_type) {
-                        break;
-                    } else {
-                        checkmap.insert(&i.comment_type, i);
-                    }
-                }
-                if !(checkmap.contains_key(&CommentType::SectionBegin)
-                    && checkmap.contains_key(&CommentType::SectionEnd)
-                    && checkmap.contains_key(&CommentType::HashInfo))
-                {
-                    println!("warning: invalid section {}", sectionname);
-                    continue;
-                }
-
-                let newsection = Section::new(
-                    checkmap.get(&CommentType::SectionBegin).unwrap().line,
-                    checkmap.get(&CommentType::SectionEnd).unwrap().line,
-                    Option::Some(String::from(sectionname)),
-                    match checkmap.get(&CommentType::SourceInfo) {
-                        Some(source) => Some(String::from(source.argument.clone().unwrap())),
-                        None => None,
-                    },
-                    Option::Some(
-                        checkmap
-                            .get(&CommentType::HashInfo)
-                            .unwrap()
-                            .argument
-                            .clone()
-                            .unwrap()
-                            .clone(),
-                    ),
-                );
-
-                sectionvector.push(newsection);
-            }
-
-            // sort sections by lines (retaining the original order of the file)
-            sectionvector.sort_by(|a, b| a.startline.cmp(&b.startline));
-
-            // detect overlapping sections
-            let vecsize = sectionvector.len();
-            let mut broken_indices = Vec::new();
-            let mut skipnext = false;
-            for i in 0..vecsize {
-                if skipnext {
-                    skipnext = false;
-                    continue;
-                }
-                let currentsection = &sectionvector[i];
-                if i < vecsize - 1 {
-                    let nextsection = &sectionvector[i + 1];
-                    if nextsection.startline < currentsection.endline {
-                        broken_indices.push(i + 1);
-                        broken_indices.push(i);
-                        skipnext = true;
-                    }
-                }
-            }
-
-            for i in broken_indices {
-                println!("section {} overlapping", i);
-                sectionvector.remove(i);
-            }
-
-            let mut modified = false;
-            // introduce anonymous sections
-            if sectionvector.len() > 0 {
-                let mut currentline = 1;
-                let mut tmpstart;
-                let mut tmpend;
-                let mut anonvector: Vec<Section> = Vec::new();
-                for i in &sectionvector {
-                    if i.startline - currentline >= 1 {
-                        tmpstart = currentline;
-                        tmpend = i.startline - 1;
-                        let newsection = Section::new(
-                            tmpstart,
-                            tmpend,
-                            Option::None,
-                            Option::None,
-                            Option::None,
-                        );
-                        anonvector.push(newsection);
-                    }
-                    currentline = i.endline + 1;
-                }
-
-                sectionvector.extend(anonvector);
-                sectionvector.sort_by(|a, b| a.startline.cmp(&b.startline));
-            } else {
-                let newsection = Section::new(
-                    1,
-                    contentvector.len() as u32,
-                    Option::None,
-                    Option::None,
-                    Option::None,
-                );
-                sectionvector.push(newsection);
-            }
-
-            // fill sections with content
-            for i in &mut sectionvector {
-                // TODO: speed this up, binary search or something
-                for c in &contentvector {
-                    if c.linenumber > i.endline {
-                        break;
-                    } else if c.linenumber < i.startline {
                         continue;
                     }
-                    i.push_str(&c.content);
-                }
-                if !i.is_anonymous() {
-                    i.finalize();
-                    if i.modified {
-                        modified = true;
+                    comments.push(comment.clone());
+                    if !section_map.contains_key(&comment.section) {
+                        section_map.insert(comment.section, Vec::new());
                     }
+                    section_map.get_mut(&comment.section).unwrap().push(comment);
+                }
+                None => lines.push(ContentLine {
+                    linenumber: line_counter,
+                    content: line,
+                }),
+            }
+        }
+
+        // validate sections and initialze section structs
+        for (sectionname, svector) in section_map.iter() {
+            let mut checkmap = HashMap::new();
+            // sections cannot have multiple hashes, beginnings etc
+            for i in svector.iter() {
+                if checkmap.contains_key(&i.comment_type) {
+                    break;
+                } else {
+                    checkmap.insert(&i.comment_type, i);
                 }
             }
+            if !(checkmap.contains_key(&CommentType::SectionBegin)
+                && checkmap.contains_key(&CommentType::SectionEnd)
+                && checkmap.contains_key(&CommentType::HashInfo))
+            {
+                println!("warning: invalid section {}", sectionname);
+                continue;
+            }
 
-            let retfile = DotFile {
-                specialcomments: commentvector,
-                sections: sectionvector,
-                file: sourcefile,
-                filename: sourcepath,
-                targetfile,
-                commentsign,
-                metafile: None,
-                modified,
-                permissions,
-            };
+            let newsection = Section::new(
+                checkmap.get(&CommentType::SectionBegin).unwrap().line,
+                checkmap.get(&CommentType::SectionEnd).unwrap().line,
+                String::from(sectionname),
+                match checkmap.get(&CommentType::SourceInfo) {
+                    Some(source) => Some(String::from(source.argument.clone().unwrap())),
+                    None => None,
+                },
+                checkmap
+                    .get(&CommentType::HashInfo)
+                    .unwrap()
+                    .argument
+                    .clone()
+                    .unwrap()
+                    .clone(),
+            );
 
-            return Ok(retfile);
+            sections.push(newsection);
         }
+
+        // sort sections by lines (retaining the original order of the file)
+        sections.sort_by(|a, b| a.get_data().startline.cmp(&b.get_data().startline));
+
+        // detect overlapping sections
+        let vecsize = sections.len();
+        let mut broken_indices = Vec::new();
+        let mut skipnext = false;
+        for i in 0..vecsize {
+            if skipnext {
+                skipnext = false;
+                continue;
+            }
+            let currentsection = &sections[i];
+            if i < vecsize - 1 {
+                let nextsection = &sections[i + 1];
+                if nextsection.get_data().startline < currentsection.get_data().endline {
+                    broken_indices.push(i + 1);
+                    broken_indices.push(i);
+                    skipnext = true;
+                }
+            }
+        }
+
+        for i in broken_indices {
+            println!("section {} overlapping", i);
+            sections.remove(i);
+        }
+
+        let mut modified = false;
+        // introduce anonymous sections
+        if sections.len() > 0 {
+            let mut currentline = 1;
+            let mut tmpstart;
+            let mut tmpend;
+            let mut anonvector: Vec<Section> = Vec::new();
+            for i in &sections {
+                if i.get_data().startline - currentline >= 1 {
+                    tmpstart = currentline;
+                    tmpend = i.get_data().startline - 1;
+                    let newsection =
+                        Section::new(tmpstart, tmpend, Option::None, Option::None, Option::None);
+                    anonvector.push(newsection);
+                }
+                currentline = i.get_data().endline + 1;
+            }
+
+            sections.extend(anonvector);
+            sections.sort_by(|a, b| a.startline.cmp(&b.startline));
+        } else {
+            let newsection = Section::new(
+                1,
+                lines.len() as u32,
+                Option::None,
+                Option::None,
+                Option::None,
+            );
+            sections.push(newsection);
+        }
+
+        // fill sections with content
+        for i in &mut sections {
+            // TODO: speed this up, binary search or something
+            for c in &lines {
+                if c.linenumber > i.endline {
+                    break;
+                } else if c.linenumber < i.startline {
+                    continue;
+                }
+                i.push_str(&c.content);
+            }
+            if !i.is_anonymous() {
+                i.finalize();
+                if i.modified {
+                    modified = true;
+                }
+            }
+        }
+
+        let retfile = DotFile {
+            specialcomments: comments,
+            sections,
+            file: sourcefile,
+            filename: sourcepath,
+            targetfile: target_file,
+            commentsign,
+            metafile: None,
+            modified,
+            permissions,
+        };
+
+        return Ok(retfile);
     }
 
     pub fn count_named_sections(&self) -> u32 {
@@ -868,7 +857,11 @@ pub fn expand_tilde(input: &str) -> String {
     if retstr.starts_with("~/") {
         retstr = String::from(format!(
             "{}/{}",
-            home::home_dir().unwrap().into_os_string().into_string().unwrap(),
+            home::home_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap(),
             retstr.strip_prefix("~/").unwrap()
         ));
     }

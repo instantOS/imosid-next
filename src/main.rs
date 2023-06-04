@@ -9,6 +9,7 @@ mod files;
 mod hashable;
 mod section;
 mod metafile;
+mod commentmap;
 use std::path::PathBuf;
 
 use crate::{
