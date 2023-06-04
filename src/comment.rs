@@ -1,6 +1,7 @@
 use regex::Regex;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+// give targetinfo sourceinfo, hashinfo and targetinfo required parameter fields
 pub enum CommentType {
     SectionBegin,
     SectionEnd,
@@ -118,7 +119,7 @@ impl Specialcomment {
                         //TODO do something
                         //fetch from file/url/git
                     } else {
-                        println!("missing source file on line {}", linenumber);
+                        println!("missing source file argument on line {}", linenumber);
                         return Option::None;
                     }
                 }

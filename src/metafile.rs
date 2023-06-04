@@ -1,5 +1,5 @@
 use crate::built_info;
-use crate::hashable::{CompileResult, Hashable};
+use crate::hashable::{ChangeState, Hashable};
 use colored::Colorize;
 use semver::Version;
 use sha256::digest;
@@ -11,6 +11,7 @@ use toml::Value;
 
 // a file containing metadata about an imosid file for file types which do not support comments
 pub struct MetaFile {
+    currenthash: String,
     pub hash: String,
     pub parentfile: String,
     pub targetfile: Option<String>,
@@ -27,17 +28,18 @@ pub struct MetaFile {
 impl Hashable for MetaFile {
     // check for modifications
     fn finalize(&mut self) {
-        self.modified = self.hash != self.get_content_hash();
+        self.currenthash = self.get_content_hash();
+        self.modified = self.hash != self.currenthash;
     }
 
-    fn compile(&mut self) -> CompileResult {
+    fn compile(&mut self) -> ChangeState {
         let contenthash = self.get_content_hash();
         self.modified = false;
         if self.hash == contenthash {
-            CompileResult::Unchanged
+            ChangeState::Unchanged
         } else {
             self.hash = contenthash;
-            CompileResult::Changed
+            ChangeState::Changed
         }
     }
 }
@@ -49,7 +51,9 @@ impl MetaFile {
         let mcontent = read_to_string(&path).unwrap();
         let value = mcontent.parse::<Value>().expect("failed to read toml");
 
+        //TODO: fileinfo struct for fields in both dotfile and metafile
         let mut retfile = MetaFile {
+            currenthash: String::from(""),
             targetfile: None,
             sourcefile: None,
             hash: String::from(""),
@@ -145,6 +149,7 @@ impl MetaFile {
             retfile.finalize();
         } else {
             retfile = MetaFile {
+                currenthash: String::from(""),
                 targetfile: None,
                 sourcefile: None,
                 hash: String::from(""),

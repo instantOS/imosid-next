@@ -1,18 +1,18 @@
-pub enum CompileResult {
+pub enum ChangeState {
     Changed,
     Unchanged,
 }
 
 pub trait Hashable {
     fn finalize(&mut self);
-    fn compile(&mut self) -> CompileResult;
+    fn compile(&mut self) -> ChangeState;
 }
 
-impl From<CompileResult> for bool {
-    fn from(result: CompileResult) -> Self {
+impl From<ChangeState> for bool {
+    fn from(result: ChangeState) -> Self {
         match result {
-            CompileResult::Changed => true,
-            CompileResult::Unchanged => false,
+            ChangeState::Changed => true,
+            ChangeState::Unchanged => false,
         }
     }
 }

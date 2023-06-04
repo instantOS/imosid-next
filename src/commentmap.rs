@@ -27,6 +27,9 @@ impl CommentMap {
     pub fn remove_incomplete(&mut self) {
         let mut incomplete_sections = vec![];
         for (section, comments) in self.map.iter() {
+            if section == "all" {
+                continue;
+            }
             let mut incomplete = false;
             let mut comment_types: HashSet<CommentType> = HashSet::new();
             for comment in comments {
@@ -63,6 +66,20 @@ impl CommentMap {
     }
 
     pub fn get_sections(&self) -> Vec<&String> {
-        self.map.keys().collect()
+        self.map
+            .keys()
+            .filter(|section| section.as_str() != "all")
+            .collect()
+    }
+
+    pub fn get_comment(&self, section: &str, comment_type: CommentType) -> Option<&Specialcomment> {
+        if let Some(comments) = self.map.get(section) {
+            for comment in comments {
+                if comment.comment_type == comment_type {
+                    return Some(comment);
+                }
+            }
+        }
+        None
     }
 }

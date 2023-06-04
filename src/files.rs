@@ -1,4 +1,5 @@
 use crate::comment::{CommentType, Specialcomment};
+use crate::commentmap::CommentMap;
 use crate::contentline::ContentLine;
 use crate::hashable::Hashable;
 use crate::metafile::MetaFile;
@@ -72,6 +73,7 @@ impl DotFile {
         let mut sections: Vec<Section> = Vec::new();
         let mut lines: Vec<ContentLine> = Vec::new();
 
+        let mut comment_map: CommentMap = CommentMap::new();
         let mut section_map: HashMap<String, Vec<Specialcomment>> = HashMap::new();
 
         let mut target_file: Option<String> = Option::None;
@@ -105,6 +107,7 @@ impl DotFile {
                 commentsign: String::from(""),
             });
         }
+
         let filelines = io::BufReader::new(&sourcefile).lines();
         // parse lines for special comments
         for i in filelines {
@@ -115,36 +118,14 @@ impl DotFile {
                 commentsign = String::from(get_comment_sign(&sourcepath, &line));
                 hascommentsign = true;
             }
+
             let newcomment = Specialcomment::from_line(&line, &commentsign, line_counter);
             match newcomment {
                 Some(comment) => {
                     // comments with section all apply to the entire file
                     //TODO: move checking into comment from_line
-                    if &comment.section == "all" {
-                        match &comment.comment_type {
-                            CommentType::TargetInfo => {
-                                if comment.argument.is_some() {
-                                    target_file =
-                                        Option::Some(String::from(&comment.argument.unwrap()));
-                                }
-                            }
-                            CommentType::PermissionInfo => {
-                                if let Some(arg) = comment.argument {
-                                    permissions = match arg.split_at(3).1.parse::<u32>() {
-                                        Err(_) => Option::None,
-                                        Ok(permnumber) => Option::Some(permnumber),
-                                    }
-                                }
-                            }
-                            &_ => {}
-                        }
-                        continue;
-                    }
+                    comment_map.push_comment(comment.clone());
                     comments.push(comment.clone());
-                    if !section_map.contains_key(&comment.section) {
-                        section_map.insert(comment.section, Vec::new());
-                    }
-                    section_map.get_mut(&comment.section).unwrap().push(comment);
                 }
                 None => lines.push(ContentLine {
                     linenumber: line_counter,
@@ -153,43 +134,25 @@ impl DotFile {
             }
         }
 
-        // validate sections and initialze section structs
-        for (sectionname, svector) in section_map.iter() {
-            let mut checkmap = HashMap::new();
-            // sections cannot have multiple hashes, beginnings etc
-            for i in svector.iter() {
-                if checkmap.contains_key(&i.comment_type) {
-                    break;
-                } else {
-                    checkmap.insert(&i.comment_type, i);
+        comment_map.remove_incomplete();
+
+        if let Some(comment) = comment_map.get_comment("all", CommentType::TargetInfo) {
+            if let Some(arg) = comment.argument {
+                target_file = Some(String::from(arg));
+            }
+        }
+        if let Some(comment) = comment_map.get_comment("all", CommentType::PermissionInfo) {
+            if let Some(arg) = comment.argument {
+                permissions = match arg.split_at(3).1.parse::<u32>() {
+                    Err(_) => Option::None,
+                    Ok(permnumber) => Option::Some(permnumber),
                 }
             }
-            if !(checkmap.contains_key(&CommentType::SectionBegin)
-                && checkmap.contains_key(&CommentType::SectionEnd)
-                && checkmap.contains_key(&CommentType::HashInfo))
-            {
-                println!("warning: invalid section {}", sectionname);
-                continue;
-            }
-
-            let newsection = Section::new(
-                checkmap.get(&CommentType::SectionBegin).unwrap().line,
-                checkmap.get(&CommentType::SectionEnd).unwrap().line,
-                String::from(sectionname),
-                match checkmap.get(&CommentType::SourceInfo) {
-                    Some(source) => Some(String::from(source.argument.clone().unwrap())),
-                    None => None,
-                },
-                checkmap
-                    .get(&CommentType::HashInfo)
-                    .unwrap()
-                    .argument
-                    .clone()
-                    .unwrap()
-                    .clone(),
-            );
-
-            sections.push(newsection);
+        }
+        for sectionname in comment_map.get_sections() {
+            Section::from_comment_map(sectionname, &comment_map).map(|section| {
+                sections.push(section);
+            });
         }
 
         // sort sections by lines (retaining the original order of the file)
@@ -226,28 +189,22 @@ impl DotFile {
             let mut currentline = 1;
             let mut tmpstart;
             let mut tmpend;
-            let mut anonvector: Vec<Section> = Vec::new();
+            let mut anonymous_sections: Vec<Section> = Vec::new();
             for i in &sections {
                 if i.get_data().startline - currentline >= 1 {
                     tmpstart = currentline;
                     tmpend = i.get_data().startline - 1;
-                    let newsection =
-                        Section::new(tmpstart, tmpend, Option::None, Option::None, Option::None);
-                    anonvector.push(newsection);
+                    let newsection = Section::new_anonymous(tmpstart, tmpend);
+                    anonymous_sections.push(newsection);
                 }
                 currentline = i.get_data().endline + 1;
             }
 
-            sections.extend(anonvector);
-            sections.sort_by(|a, b| a.startline.cmp(&b.startline));
+            sections.extend(anonymous_sections);
+            sections.sort_by(|a, b| a.get_data().startline.cmp(&b.get_data().startline));
         } else {
-            let newsection = Section::new(
-                1,
-                lines.len() as u32,
-                Option::None,
-                Option::None,
-                Option::None,
-            );
+            // make the entire file one anonymous section
+            let newsection = Section::new_anonymous(1, lines.len() as u32);
             sections.push(newsection);
         }
 
@@ -255,19 +212,15 @@ impl DotFile {
         for i in &mut sections {
             // TODO: speed this up, binary search or something
             for c in &lines {
-                if c.linenumber > i.endline {
+                if c.linenumber > i.get_data().endline {
                     break;
-                } else if c.linenumber < i.startline {
+                } else if c.linenumber < i.get_data().startline {
                     continue;
                 }
                 i.push_str(&c.content);
             }
-            if !i.is_anonymous() {
-                i.finalize();
-                if i.modified {
-                    modified = true;
-                }
-            }
+            i.finalize();
+            //TODO: deal with "modified" variable
         }
 
         let retfile = DotFile {
@@ -320,6 +273,7 @@ impl DotFile {
             }
             return;
         }
+
         for i in &self.sections {
             if !i.source.is_some() {
                 continue;
@@ -358,8 +312,8 @@ impl DotFile {
 
     fn get_section(&self, name: &str) -> Option<Section> {
         for i in &self.sections {
-            if let Some(sname) = &i.name {
-                if sname == name {
+            if let Section::Named(_, named_data) = i {
+                if named_data.name == name {
                     return Some(i.clone());
                 }
             }
@@ -369,9 +323,9 @@ impl DotFile {
 
     // delete section sectionname from sections
     pub fn deletesection(&mut self, sectionname: &str) -> bool {
-        if let Some(index) = self.sections.iter().position(|x| match &x.name {
-            Some(name) => name.eq(sectionname),
-            None => false,
+        if let Some(index) = self.sections.iter().position(|x| match &x {
+            Section::Named(_, named_data) => named_data.name.eq(sectionname),
+            _ => false,
         }) {
             self.sections.remove(index);
             println!("deleting section {}", sectionname);
@@ -381,6 +335,7 @@ impl DotFile {
         }
     }
 
+    //TODO: changedstatus
     pub fn compile(&mut self) -> bool {
         let mut didsomething = false;
         match &mut self.metafile {

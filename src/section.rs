@@ -1,8 +1,9 @@
 // use crate::comment;
 use crate::comment::CommentType;
+use crate::commentmap::CommentMap;
 use crate::{
     comment::Specialcomment,
-    hashable::{CompileResult, Hashable},
+    hashable::{ChangeState, Hashable},
 };
 use sha256::digest;
 
@@ -34,17 +35,17 @@ impl Hashable for Section {
     /// marking the section as unmodified
     /// return false if nothing has changed
 
-    fn compile(&mut self) -> CompileResult {
+    fn compile(&mut self) -> ChangeState {
         match self {
             Section::Named(_, named_data) => {
                 if named_data.targethash == named_data.hash {
-                    CompileResult::Unchanged
+                    ChangeState::Unchanged
                 } else {
                     named_data.targethash = named_data.hash.clone();
-                    CompileResult::Changed
+                    ChangeState::Changed
                 }
             }
-            Section::Anonymous(_) => CompileResult::Unchanged,
+            Section::Anonymous(_) => ChangeState::Unchanged,
         }
     }
 
@@ -78,6 +79,24 @@ impl Section {
                 targethash,
             },
         )
+    }
+
+    pub fn from_comment_map(name: &str, map: &CommentMap) -> Option<Section> {
+        Some(Section::new(
+            map.get_comment(name, CommentType::SectionBegin)?.line,
+            map.get_comment(name, CommentType::SectionEnd)?.line,
+            name.to_string(),
+            map.get_comment(name, CommentType::SourceInfo).and_then(|source| source.argument),
+            map.get_comment(name, CommentType::HashInfo)?.argument?,
+        ))
+    }
+
+    pub fn new_anonymous(start: u32, end: u32) -> Section {
+        Section::Anonymous(SectionData {
+            startline: start,
+            content: String::from(""),
+            endline: end,
+        })
     }
 
     /// append string to content
