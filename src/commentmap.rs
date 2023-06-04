@@ -57,4 +57,12 @@ impl CommentMap {
     pub fn remove_section(&mut self, section: &str) {
         self.map.remove(section);
     }
+
+    pub fn get_comments(&self, section: &str) -> Option<&Vec<Specialcomment>> {
+        self.map.get(section)
+    }
+
+    pub fn get_sections(&self) -> Vec<&String> {
+        self.map.keys().collect()
+    }
 }

@@ -288,7 +288,7 @@ impl DotFile {
     pub fn count_named_sections(&self) -> u32 {
         let mut counter = 0;
         for i in &self.sections {
-            if !i.is_anonymous() {
+            if let Section::Named { .. } = i {
                 counter += 1;
             }
         }
