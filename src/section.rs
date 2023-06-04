@@ -24,9 +24,9 @@ pub struct NamedSectionData {
 
 #[derive(Clone)]
 pub struct SectionData {
-    startline: u32, // line number section starts at in file
+    pub startline: u32, // line number section starts at in file
     content: String,
-    endline: u32, // line number section ends at in file
+    pub endline: u32, // line number section ends at in file
 }
 
 impl Hashable for Section {
@@ -99,31 +99,41 @@ impl Section {
                 outstr.push_str(&Specialcomment::new_string(
                     commentsign,
                     CommentType::SectionBegin,
-                    name,
+                    &named_data.name,
                     None,
                 ));
                 outstr.push_str(&Specialcomment::new_string(
                     commentsign,
                     CommentType::HashInfo,
-                    name,
-                    Some(&if let Some(targethash) = self.targethash.clone() {
-                        targethash
-                    } else {
-                        self.hash.clone()
-                    }),
+                    &named_data.name,
+                    Some(&named_data.targethash),
                 ));
-                if let Some(source) = &self.source {
-                    outstr.push_str(&format!("{}... {} source {}\n", commentsign, name, source));
+                if let Some(source) = named_data.source.as_ref() {
+                    outstr.push_str(&Specialcomment::new_string(
+                        commentsign,
+                        CommentType::SourceInfo,
+                        &named_data.name,
+                        Some(source),
+                    ));
                 }
-                //todo: section target
-                outstr.push_str(&self.content);
-                outstr.push_str(&format!("{}... {} end\n", commentsign, name));
+                //TODO: section target
+                outstr.push_str(&data.content);
+                outstr.push_str(&Specialcomment::new_string(
+                    commentsign,
+                    CommentType::SectionEnd,
+                    &named_data.name,
+                    None,
+                ));
                 outstr
             }
-            Section::Anonymous(data) => data.content.clone()
+            Section::Anonymous(data) => data.content.clone(),
         }
-        match &self.name {
-            Some(name) => 
+    }
+
+    pub fn get_data(&self) -> &SectionData {
+        match self {
+            Section::Named(data, _) => data,
+            Section::Anonymous(data) => data,
         }
     }
 }
