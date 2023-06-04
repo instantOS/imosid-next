@@ -8,11 +8,13 @@ mod contentline;
 mod files;
 mod hashable;
 mod section;
+mod metafile;
 use std::path::PathBuf;
 
 use crate::{
     app::get_vec_args,
-    files::{ApplyResult, Metafile, Specialfile},
+    files::{ApplyResult, Specialfile},
+    metafile::Metafile,
     hashable::Hashable,
 };
 
@@ -40,7 +42,7 @@ macro_rules! specialfile {
                 eprintln!("could not open file {}", $a.to_str().unwrap().red());
                 return Ok(());
             }
-        };
+        }
     };
 }
 
