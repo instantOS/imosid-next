@@ -13,8 +13,8 @@ use std::path::PathBuf;
 
 use crate::{
     app::get_vec_args,
-    files::{ApplyResult, Specialfile},
-    metafile::Metafile,
+    files::{ApplyResult, DotFile},
+    metafile::MetaFile,
     hashable::Hashable,
 };
 
@@ -36,7 +36,7 @@ macro_rules! check_file_arg {
 
 macro_rules! specialfile {
     ($a:expr) => {
-        match Specialfile::from_pathbuf($a) {
+        match DotFile::from_pathbuf($a) {
             Ok(file) => file,
             Err(_) => {
                 eprintln!("could not open file {}", $a.to_str().unwrap().red());
@@ -56,7 +56,7 @@ fn main() -> Result<(), std::io::Error> {
             let filename = compile_matches.get_one::<PathBuf>("file").unwrap();
             check_file_arg!(filename);
             if *compile_matches.get_one("metafile").unwrap() {
-                let mut newmetafile = Metafile::from(filename.to_path_buf());
+                let mut newmetafile = MetaFile::from(filename.to_path_buf());
                 newmetafile.compile();
                 newmetafile.write_to_file();
                 println!("compiled {}", &filename.to_str().unwrap().bold());
@@ -85,7 +85,7 @@ fn main() -> Result<(), std::io::Error> {
             let mut anymodified = false;
             for entry in walkdots(filename) {
                 let entrypath = entry.path().to_path_buf();
-                let checkfile = match Specialfile::from_pathbuf(&entrypath) {
+                let checkfile = match DotFile::from_pathbuf(&entrypath) {
                     Ok(file) => file,
                     Err(_) => {
                         eprintln!("could not open file {}", entrypath.to_str().unwrap().red());
@@ -187,7 +187,7 @@ fn main() -> Result<(), std::io::Error> {
                 for entry in walkdots(filename) {
                     let entrypath = entry.path().to_path_buf();
                     let entrystring = entry.path().to_str();
-                    let tmpsource = match Specialfile::from_pathbuf(&entry.path().to_path_buf()) {
+                    let tmpsource = match DotFile::from_pathbuf(&entry.path().to_path_buf()) {
                         Ok(file) => file,
                         Err(_) => {
                             eprintln!(
@@ -219,7 +219,7 @@ fn main() -> Result<(), std::io::Error> {
         Some(("info", info_matches)) => {
             let filename = info_matches.get_one::<PathBuf>("file").unwrap();
             check_file_arg!(filename);
-            let infofile = Specialfile::from_pathbuf(filename)?;
+            let infofile = DotFile::from_pathbuf(filename)?;
             match &infofile.metafile {
                 None => {
                     println!("comment syntax: {}", &infofile.commentsign);

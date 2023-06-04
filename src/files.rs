@@ -1,7 +1,7 @@
 use crate::comment::{CommentType, Specialcomment};
 use crate::contentline::ContentLine;
 use crate::hashable::Hashable;
-use crate::metafile::Metafile;
+use crate::metafile::MetaFile;
 use crate::section::Section;
 use colored::Colorize;
 use regex::Regex;
@@ -22,26 +22,26 @@ pub enum ApplyResult {
     Error,
 }
 
-pub struct Specialfile {
+pub struct DotFile {
     //TODO maybe implement finalize?
     specialcomments: Vec<Specialcomment>,
     pub sections: Vec<Section>,
     pub file: File,
     pub filename: String,
     pub targetfile: Option<String>,
-    pub metafile: Option<Metafile>,
+    pub metafile: Option<MetaFile>,
     pub commentsign: String,
     pub modified: bool,
     pub permissions: Option<u32>,
 }
 
-impl Specialfile {
-    pub fn new(filename: &str) -> Result<Specialfile, std::io::Error> {
+impl DotFile {
+    pub fn new(filename: &str) -> Result<DotFile, std::io::Error> {
         let filepath = PathBuf::from(filename);
         Self::from_pathbuf(&filepath)
     }
 
-    pub fn from_pathbuf(path: &PathBuf) -> Result<Specialfile, std::io::Error> {
+    pub fn from_pathbuf(path: &PathBuf) -> Result<DotFile, std::io::Error> {
         let sourcepath = path
             .canonicalize()
             .expect("could not canonicalize path")
@@ -84,7 +84,7 @@ impl Specialfile {
             let mut contentstring = String::new();
             io::BufReader::new(&sourcefile).read_to_string(&mut contentstring)?;
 
-            metafile = if let Some(mut metafile) = Metafile::new(
+            metafile = if let Some(mut metafile) = MetaFile::new(
                 PathBuf::from(&format!("{}.imosid.toml", sourcepath)),
                 &contentstring,
             ) {
@@ -93,7 +93,7 @@ impl Specialfile {
             } else {
                 return Err(std::io::Error::new(ErrorKind::Other, "invalid metafile"));
             };
-            return Ok(Specialfile {
+            return Ok(DotFile {
                 specialcomments: commentvector,
                 sections: sectionvector,
                 file: sourcefile,
@@ -280,7 +280,7 @@ impl Specialfile {
                 }
             }
 
-            let retfile = Specialfile {
+            let retfile = DotFile {
                 specialcomments: commentvector,
                 sections: sectionvector,
                 file: sourcefile,
@@ -310,7 +310,7 @@ impl Specialfile {
         //iterate over sections in self.sections
 
         let mut modified = false;
-        let mut applymap: HashMap<&String, Specialfile> = HashMap::new();
+        let mut applymap: HashMap<&String, DotFile> = HashMap::new();
         let mut applyvec = Vec::new();
         if self.metafile.is_some() {
             let metafile = &self.metafile.as_ref().unwrap();
@@ -321,7 +321,7 @@ impl Specialfile {
                 return;
             }
             //TODO look up what as_ref does
-            match Specialfile::new(&metafile.sourcefile.as_ref().unwrap()) {
+            match DotFile::new(&metafile.sourcefile.as_ref().unwrap()) {
                 Ok(file) => {
                     modified = self.applyfile(&file);
                 }
@@ -337,7 +337,7 @@ impl Specialfile {
             }
             if let Some(source) = &i.source {
                 if !applymap.contains_key(source) {
-                    match Specialfile::new(source) {
+                    match DotFile::new(source) {
                         Ok(sfile) => {
                             applymap.insert(source, sfile);
                         }
@@ -436,13 +436,13 @@ impl Specialfile {
     }
 
     // create the target file if not existing
-    pub fn create_file(source: &Specialfile) -> bool {
+    pub fn create_file(source: &DotFile) -> bool {
         let targetpath = String::from(source.targetfile.clone().unwrap());
         let realtargetpath = expand_tilde(&targetpath);
         // create new file
         match &source.metafile {
             None => {
-                let mut targetfile: Specialfile = Specialfile {
+                let mut targetfile: DotFile = DotFile {
                     specialcomments: source.specialcomments.clone(),
                     sections: source.sections.clone(),
                     filename: realtargetpath.clone(),
@@ -470,7 +470,7 @@ impl Specialfile {
                     .expect(&format!("cannot open file {}", &targetpath))
                     .write_all(metafile.content.as_bytes())
                     .expect(&format!("could not write file {}", &targetpath));
-                let mut newmetafile = Metafile::from(PathBuf::from(&realtargetpath));
+                let mut newmetafile = MetaFile::from(PathBuf::from(&realtargetpath));
                 newmetafile.sourcefile = Some(source.filename.clone());
                 newmetafile.permissions = metafile.permissions;
                 newmetafile.write_to_file();
@@ -496,7 +496,7 @@ impl Specialfile {
         let mut donesomething = false;
         if let Some(target) = &self.targetfile {
             if create_file(&target) {
-                if Specialfile::create_file(self) {
+                if DotFile::create_file(self) {
                     println!(
                         "applied {} to create {} ",
                         &self.filename.green(),
@@ -505,7 +505,7 @@ impl Specialfile {
                     donesomething = true;
                 }
             } else {
-                let mut targetfile = match Specialfile::new(&expand_tilde(&target)) {
+                let mut targetfile = match DotFile::new(&expand_tilde(&target)) {
                     Ok(file) => file,
                     Err(_) => {
                         eprintln!("failed to parse {}", &target.red());
@@ -532,7 +532,7 @@ impl Specialfile {
     // return true if file will be modified
     // applies other file to self
     // TODO: return result
-    pub fn applyfile(&mut self, inputfile: &Specialfile) -> bool {
+    pub fn applyfile(&mut self, inputfile: &DotFile) -> bool {
         match &mut self.metafile {
             None => {
                 if self.is_anonymous() {
@@ -703,7 +703,7 @@ impl Specialfile {
     }
 }
 
-impl ToString for Specialfile {
+impl ToString for DotFile {
     fn to_string(&self) -> String {
         match &self.metafile {
             None => {

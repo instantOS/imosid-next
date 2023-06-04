@@ -19,7 +19,7 @@ echo \"content of the second section\"
     use crate::comment::{CommentType, Specialcomment};
     use crate::hashable::Hashable;
     use crate::section::Section;
-    use crate::files::Specialfile;
+    use crate::files::DotFile;
 
     use tempdir::TempDir;
     use std::fs::File;
@@ -74,7 +74,7 @@ testing123
         let mut testfile = File::create(&testpath).unwrap();
         testfile.write_all(FILE_CONTENT.as_bytes()).unwrap();
 
-        let mut testfile = Specialfile::from_pathbuf(&testpath).unwrap();
+        let mut testfile = DotFile::from_pathbuf(&testpath).unwrap();
         let mut sectioncount = 0;
 
         for section in testfile.sections {

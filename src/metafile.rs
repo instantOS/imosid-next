@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use toml::Value;
 
 // a file containing metadata about an imosid file for file types which do not support comments
-pub struct Metafile {
+pub struct MetaFile {
     pub hash: String,
     pub parentfile: String,
     pub targetfile: Option<String>,
@@ -24,7 +24,7 @@ pub struct Metafile {
     pub permissions: Option<u32>,
 }
 
-impl Hashable for Metafile {
+impl Hashable for MetaFile {
     // check for modifications
     fn finalize(&mut self) {
         self.modified = self.hash != self.get_content_hash();
@@ -42,12 +42,14 @@ impl Hashable for Metafile {
     }
 }
 
-impl Metafile {
-    pub fn new(path: PathBuf, content: &str) -> Option<Metafile> {
+impl MetaFile {
+    //TODO: Result
+    //TODO: serde DTO
+    pub fn new(path: PathBuf, content: &str) -> Option<MetaFile> {
         let mcontent = read_to_string(&path).unwrap();
         let value = mcontent.parse::<Value>().expect("failed to read toml");
 
-        let mut retfile = Metafile {
+        let mut retfile = MetaFile {
             targetfile: None,
             sourcefile: None,
             hash: String::from(""),
@@ -99,7 +101,7 @@ impl Metafile {
         path
     }
 
-    // TODO incorporate this inro normal write
+    // TODO incorporate this into normal write
     pub fn write_permissions(&self) {
         let parentpath = self.get_parent_file();
         if let Some(permissions) = &self.permissions {
@@ -115,7 +117,7 @@ impl Metafile {
     // create a new metafile for a file
     // TODO maybe return result?
     // TODO split this up, this doesn't need to write to disk
-    pub fn from(sourcepath: PathBuf) -> Metafile {
+    pub fn from(sourcepath: PathBuf) -> MetaFile {
         let mut path = sourcepath.clone();
         //
         //TODO handle result
@@ -135,14 +137,14 @@ impl Metafile {
         path.pop();
         path.push(filename);
 
-        let mut retfile: Metafile;
+        let mut retfile: MetaFile;
         //Maybe distinguish between new and from path?
         if path.is_file() {
-            retfile = Metafile::new(path.clone(), &filecontent).expect("could not create metafile");
+            retfile = MetaFile::new(path.clone(), &filecontent).expect("could not create metafile");
             retfile.update();
             retfile.finalize();
         } else {
-            retfile = Metafile {
+            retfile = MetaFile {
                 targetfile: None,
                 sourcefile: None,
                 hash: String::from(""),
