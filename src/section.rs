@@ -1,5 +1,9 @@
 // use crate::comment;
-use crate::hashable::{CompileResult, Hashable};
+use crate::comment::CommentType;
+use crate::{
+    comment::Specialcomment,
+    hashable::{CompileResult, Hashable},
+};
 use sha256::digest;
 
 #[derive(Clone)]
@@ -90,16 +94,21 @@ impl Section {
         match &self.name {
             Some(name) => {
                 let mut outstr = String::new();
-                outstr.push_str(&format!("{}... {} begin\n", commentsign, name));
-                outstr.push_str(&format!(
-                    "{}... {} hash {}\n",
+                outstr.push_str(&Specialcomment::new_string(
                     commentsign,
+                    CommentType::SectionBegin,
                     name,
-                    if let Some(targethash) = self.targethash.clone() {
+                    None,
+                ));
+                outstr.push_str(&Specialcomment::new_string(
+                    commentsign,
+                    CommentType::HashInfo,
+                    name,
+                    Some(&if let Some(targethash) = self.targethash.clone() {
                         targethash
                     } else {
                         self.hash.clone()
-                    }
+                    }),
                 ));
                 if let Some(source) = &self.source {
                     outstr.push_str(&format!("{}... {} source {}\n", commentsign, name, source));
