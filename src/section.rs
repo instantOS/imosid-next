@@ -3,50 +3,53 @@ use crate::hashable::{CompileResult, Hashable};
 use sha256::digest;
 
 #[derive(Clone)]
-pub struct Section {
-    pub startline: u32,         // line number section starts at in file
-    pub name: Option<String>,   // section name, None if anonymous
+pub enum Section {
+    Named(SectionData, NamedSectionData),
+    /// anonymous sections are sections without marker comments
+    /// e.g. parts not tracked by imosid
+    Anonymous(SectionData),
+}
+
+#[derive(Clone)]
+pub struct NamedSectionData {
+    pub name: String,           // section name, None if anonymous
     pub source: Option<String>, // source to update section from
-    pub endline: u32,           // line number section ends at in file
     pub hash: String,           // current hash of section
-    targethash: Option<String>, // hash section should have if unmodified
-    pub content: String,
-    pub modified: bool,
+    pub targethash: String,     // hash section should have if unmodified
+}
+
+#[derive(Clone)]
+pub struct SectionData {
+    startline: u32, // line number section starts at in file
+    content: String,
+    endline: u32, // line number section ends at in file
 }
 
 impl Hashable for Section {
     /// set target hash to current hash
     /// marking the section as unmodified
     /// return false if nothing has changed
+
     fn compile(&mut self) -> CompileResult {
-        let changed = match &self.targethash {
-            Some(hash) => {
-                if hash.to_string() == self.hash {
+        match self {
+            Section::Named(_, named_data) => {
+                if named_data.targethash == named_data.hash {
                     CompileResult::Unchanged
                 } else {
+                    named_data.targethash = named_data.hash.clone();
                     CompileResult::Changed
                 }
             }
-            None => {
-                if self.is_anonymous() {
-                    CompileResult::Unchanged
-                } else {
-                    CompileResult::Changed
-                }
-            }
-        };
-        self.targethash = Some(self.hash.clone());
-        changed
+            Section::Anonymous(_) => CompileResult::Unchanged,
+        }
     }
 
     /// generate section hash
     /// and detect section status
     fn finalize(&mut self) {
-        let newhash = digest(self.content.as_str()).to_uppercase();
-        if self.name.is_some() {
-            self.modified = self.hash != newhash;
+        if let Section::Named(data, named_data) = self {
+            named_data.hash = digest(data.content.as_str()).to_uppercase();
         }
-        self.hash = newhash;
     }
 }
 
@@ -54,41 +57,40 @@ impl Section {
     pub fn new(
         start: u32,
         end: u32,
-        name: Option<String>,
+        name: String,
         source: Option<String>,
-        targethash: Option<String>,
+        targethash: String,
     ) -> Section {
-        Section {
-            name,
-            startline: start,
-            endline: end,
-            source,
-            hash: match &targethash {
-                Some(hash) => String::from(hash),
-                None => String::new(),
+        Section::Named(
+            SectionData {
+                startline: start,
+                content: String::from(""),
+                endline: end,
             },
-            targethash,
-            modified: false,
-            content: String::from(""),
-        }
-    }
-
-    /// anonymous sections are sections without marker comments
-    /// e.g. parts not tracked by imosid
-    pub fn is_anonymous(&self) -> bool {
-        self.name.is_none()
+            NamedSectionData {
+                name,
+                source,
+                hash: String::from(""),
+                targethash,
+            },
+        )
     }
 
     /// append string to content
     //maybe make this a trait?
     pub fn push_str(&mut self, line: &str) {
-        self.content.push_str(&format!("{line}\n"));
+        match self {
+            Section::Named(data, _) => data,
+            Section::Anonymous(data) => data,
+        }
+        .content
+        .push_str(line)
     }
 
     /// return entire section with formatted marker comments and content
     pub fn output(&self, commentsign: &str) -> String {
-        match &self.name {
-            Some(name) => {
+        match self {
+            Section::Named(data, named_data) => {
                 let mut outstr = String::new();
                 outstr.push_str(&format!("{}... {} begin\n", commentsign, name));
                 outstr.push_str(&format!(
@@ -109,8 +111,10 @@ impl Section {
                 outstr.push_str(&format!("{}... {} end\n", commentsign, name));
                 outstr
             }
-            // anonymous section
-            None => self.content.clone(),
+            Section::Anonymous(data) => data.content.clone()
+        }
+        match &self.name {
+            Some(name) => 
         }
     }
 }
