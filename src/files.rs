@@ -248,12 +248,14 @@ impl DotFile {
         counter
     }
 
+    pub fn get_source_files() {}
+
     pub fn update(&mut self) {
         //iterate over sections in self.sections
 
         let mut modified = false;
         let mut applymap: HashMap<&String, DotFile> = HashMap::new();
-        let mut applyvec = Vec::new();
+        let mut source_sections = Vec::new();
         if self.metafile.is_some() {
             let metafile = &self.metafile.as_ref().unwrap();
             if metafile.modified {
@@ -274,39 +276,28 @@ impl DotFile {
             return;
         }
 
-        for i in &self.sections {
-            if !i.source.is_some() {
-                continue;
-            }
-            if let Some(source) = &i.source {
-                if !applymap.contains_key(source) {
-                    match DotFile::new(source) {
-                        Ok(sfile) => {
-                            applymap.insert(source, sfile);
-                        }
-                        Err(_) => {
-                            println!("error: could not open source file {}", source);
-                            continue;
+        for section in &self.sections {
+            if let Section::Named(data, named_data) = section {
+                if let Some(source) = &named_data.source {
+                    if !applymap.contains_key(source) {
+                        match DotFile::new(source) {
+                            Ok(sfile) => {
+                                applymap.insert(source, sfile);
+                            }
+                            Err(_) => {
+                                println!("error: could not open source file {}", source);
+                                continue;
+                            }
                         }
                     }
+                    if let Some(sfile) = applymap.get(source) {
+                        source_sections.push(sfile.clone().get_section(source).unwrap());
+                    }
                 }
-                if let Some(sfile) = applymap.get(source) {
-                    applyvec.push(sfile.clone().get_section(source).unwrap());
-                }
-                // if applymap.contains_key(source) {
-                //     applyvec.push(
-                //         applymap
-                //             .get(source)
-                //             .unwrap()
-                //             .clone()
-                //             .get_section(source)
-                //             .unwrap(),
-                //     );
-                // }
             }
         }
-        for i in applyvec.iter() {
-            self.applysection(i.clone());
+        for applysection in source_sections.iter() {
+            self.applysection(applysection.clone());
         }
     }
 
@@ -380,6 +371,7 @@ impl DotFile {
     }
 
     // create the target file if not existing
+    // TODO: result
     pub fn create_file(source: &DotFile) -> bool {
         let targetpath = String::from(source.targetfile.clone().unwrap());
         let realtargetpath = expand_tilde(&targetpath);
@@ -425,15 +417,7 @@ impl DotFile {
     }
 
     pub fn is_anonymous(&self) -> bool {
-        let mut anonymous = true;
-
-        for i in &self.sections {
-            if !i.is_anonymous() {
-                anonymous = false;
-                break;
-            }
-        }
-        anonymous
+        self.count_named_sections() > 0
     }
 
     pub fn apply(&self) -> ApplyResult {
@@ -473,36 +457,53 @@ impl DotFile {
         }
     }
 
+    fn can_apply(&self, other: &DotFile) -> bool {
+        if self.metafile.is_some() {
+            if other.metafile.is_some() {
+                return true;
+            } else {
+                eprintln!(
+                    "{} {}",
+                    "cannot apply comment file to metafile ".yellow(),
+                    self.filename.yellow().bold()
+                );
+                return false;
+            }
+        } else {
+            if self.is_anonymous() {
+                eprintln!(
+                    "{} {}",
+                    "cannot apply to unmanaged file ".yellow(),
+                    self.filename.yellow().bold()
+                );
+                return false;
+            }
+            if other.metafile.is_some() {
+                eprintln!(
+                    "cannot apply metafile to normal imosid file {}",
+                    self.filename.bold()
+                );
+                return false;
+            } else {
+                if other.is_anonymous() {
+                    eprintln!("{} {}", other.filename.red(), "is unmanaged, cannot apply");
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
+
     // return true if file will be modified
     // applies other file to self
     // TODO: return result
     pub fn applyfile(&mut self, inputfile: &DotFile) -> bool {
+        if !self.can_apply(inputfile) {
+            return false;
+        }
         match &mut self.metafile {
             None => {
-                if self.is_anonymous() {
-                    eprintln!(
-                        "{} {}",
-                        "cannot apply to unmanaged file ".yellow(),
-                        self.filename.yellow().bold()
-                    );
-                    return false;
-                }
-                if inputfile.metafile.is_some() {
-                    eprintln!(
-                        "cannot apply metafile to normal imosid file {}",
-                        self.filename.bold()
-                    );
-                    return false;
-                }
-
-                if inputfile.is_anonymous() {
-                    eprintln!(
-                        "{} {}",
-                        inputfile.filename.red(),
-                        "is unmanaged, cannot apply"
-                    );
-                    return false;
-                }
                 //if no sections are updated, don't write anything to the file system
                 let mut modified = false;
 
@@ -577,32 +578,24 @@ impl DotFile {
             // apply entire content if file is managed by metafile
             Some(metafile) => {
                 if !metafile.modified {
-                    match &inputfile.metafile {
-                        None => {
-                            eprintln!(
-                                "{}",
-                                "cannot apply section file to files managed by metafiles"
-                            );
+                    if let Some(applymetafile) = &inputfile.metafile {
+                        if applymetafile.modified {
+                            println!("source file {} modified", &applymetafile.parentfile);
+                            return false;
                         }
-                        Some(applymetafile) => {
-                            if applymetafile.modified {
-                                println!("source file {} modified", &applymetafile.parentfile);
-                                return false;
-                            }
-                            if metafile.hash == applymetafile.hash {
-                                println!("file {} already up to date", self.filename.bold());
-                                return false;
-                            }
-                            metafile.content = applymetafile.content.clone();
-                            metafile.hash = applymetafile.hash.clone();
+                        if metafile.hash == applymetafile.hash {
+                            println!("file {} already up to date", self.filename.bold());
+                            return false;
+                        }
+                        metafile.content = applymetafile.content.clone();
+                        metafile.hash = applymetafile.hash.clone();
 
-                            println!(
-                                "applied {} to {}",
-                                inputfile.filename.bold(),
-                                self.filename.bold()
-                            );
-                            return true;
-                        }
+                        println!(
+                            "applied {} to {}",
+                            inputfile.filename.bold(),
+                            self.filename.bold()
+                        );
+                        return true;
                     }
                 } else {
                     println!(
