@@ -3,7 +3,7 @@ use crate::commentmap::CommentMap;
 use crate::contentline::ContentLine;
 use crate::hashable::Hashable;
 use crate::metafile::MetaFile;
-use crate::section::Section;
+use crate::section::{Section, SectionData, NamedSectionData};
 use colored::Colorize;
 use regex::Regex;
 use std::collections::HashMap;
@@ -238,6 +238,16 @@ impl DotFile {
         return Ok(retfile);
     }
 
+    fn get_named_sections(&self) -> Vec<(&SectionData, &NamedSectionData)> {
+        let mut retvec: Vec<(&SectionData, &NamedSectionData)> = Vec::new();
+        for i in &self.sections {
+            if let Section::Named(data, named_data) = i {
+                retvec.push((&data, &named_data));
+            }
+        }
+        return retvec;
+    }
+
     pub fn count_named_sections(&self) -> u32 {
         let mut counter = 0;
         for i in &self.sections {
@@ -296,8 +306,11 @@ impl DotFile {
                 }
             }
         }
+
         for applysection in source_sections.iter() {
-            self.applysection(applysection.clone());
+            if let Section::Named(data, named_data) = applysection.clone() {
+                self.applysection(data, named_data);
+            }
         }
     }
 
@@ -495,6 +508,27 @@ impl DotFile {
         }
     }
 
+    fn has_section(&self, name: &str) -> bool {
+        for (_, named_data) in self.get_named_sections() {
+            if named_data.name == name {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn has_same_sections(&self, other: &DotFile) -> bool {
+        if self.sections.len() != other.sections.len() {
+            return false;
+        }
+        for (_, named_data) in self.get_named_sections() {
+            if !other.has_section(&named_data.name) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // return true if file will be modified
     // applies other file to self
     // TODO: return result
@@ -508,31 +542,7 @@ impl DotFile {
                 let mut modified = false;
 
                 // true if input file contains all sections that self has
-                let mut allsections = true;
-
-                for i in &self.sections {
-                    allsections = false;
-                    let selfname = match &i.name {
-                        Some(name) => name.clone(),
-                        None => {
-                            continue;
-                        }
-                    };
-                    for u in &inputfile.sections {
-                        if let Some(inputname) = u.name.clone() {
-                            if inputname == selfname {
-                                allsections = true;
-                                break;
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if !allsections {
-                        break;
-                    }
-                }
+                let mut allsections = self.has_same_sections(&inputfile);
 
                 if !self.modified && allsections {
                     // copy entire file contents if all sections are unmodified
@@ -546,8 +556,8 @@ impl DotFile {
                     modified = true;
                 } else {
                     let mut applycounter = 0;
-                    for i in &inputfile.sections {
-                        if self.applysection(i.clone()) {
+                    for (data, named_data) in inputfile.get_named_sections() {
+                        if self.applysection(data.clone(), named_data.clone()) {
                             applycounter += 1;
                             modified = true;
                         }
@@ -608,7 +618,7 @@ impl DotFile {
         }
     }
 
-    fn applysection(&mut self, section: Section) -> bool {
+    fn applysection(&mut self, sectiondata: SectionData, named_data: NamedSectionData) -> bool {
         if let Some(_) = &self.metafile {
             eprintln!(
                 "{}",
@@ -618,21 +628,23 @@ impl DotFile {
             );
             return false;
         }
+        if named_data.hash != named_data.targethash {
+            eprintln!("cannot apply modified section");
+            return false;
+        }
+
         for i in 0..self.sections.len() {
             let tmpsection = self.sections.get(i).unwrap();
-            if tmpsection.is_anonymous()
-                || section.is_anonymous()
-                || section.modified
-                || tmpsection.modified
-            {
-                continue;
+            if let Section::Named(data, named_data) = tmpsection {
+                let applydata = apply_section.get_data();
+                let applydata_named = apply_section.
             }
             let tmpname = &tmpsection.name.clone().unwrap();
-            if tmpname == &section.name.clone().unwrap() {
-                if &tmpsection.hash == &section.hash {
+            if tmpname == &apply_section.name.clone().unwrap() {
+                if &tmpsection.hash == &apply_section.hash {
                     continue;
                 }
-                self.sections[i] = section;
+                self.sections[i] = apply_section;
                 return true;
             }
         }
@@ -707,7 +719,10 @@ impl ToString for DotFile {
             }
         }
     }
+
 }
+
+
 
 // detect comment syntax for file based on filename, extension and hashbang
 fn get_comment_sign(filename: &str, firstline: &str) -> String {
