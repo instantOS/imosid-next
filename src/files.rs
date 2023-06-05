@@ -3,7 +3,7 @@ use crate::commentmap::CommentMap;
 use crate::contentline::ContentLine;
 use crate::hashable::Hashable;
 use crate::metafile::MetaFile;
-use crate::section::{Section, SectionData, NamedSectionData};
+use crate::section::{NamedSectionData, Section, SectionData};
 use colored::Colorize;
 use regex::Regex;
 use std::collections::HashMap;
@@ -633,19 +633,13 @@ impl DotFile {
             return false;
         }
 
-        for i in 0..self.sections.len() {
-            let tmpsection = self.sections.get(i).unwrap();
-            if let Section::Named(data, named_data) = tmpsection {
-                let applydata = apply_section.get_data();
-                let applydata_named = apply_section.
-            }
-            let tmpname = &tmpsection.name.clone().unwrap();
-            if tmpname == &apply_section.name.clone().unwrap() {
-                if &tmpsection.hash == &apply_section.hash {
-                    continue;
+        for section_index in 0..self.sections.len() {
+            let tmpsection = self.sections.get(section_index).unwrap();
+            if let Section::Named(src_data, src_named_data) = tmpsection {
+                if src_named_data.name.eq(&named_data.name) {
+                    self.sections[section_index] = Section::Named(sectiondata, named_data);
+                    return true;
                 }
-                self.sections[i] = apply_section;
-                return true;
             }
         }
         return false;
@@ -719,10 +713,7 @@ impl ToString for DotFile {
             }
         }
     }
-
 }
-
-
 
 // detect comment syntax for file based on filename, extension and hashbang
 fn get_comment_sign(filename: &str, firstline: &str) -> String {
