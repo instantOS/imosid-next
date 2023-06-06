@@ -149,6 +149,7 @@ impl DotFile {
                 }
             }
         }
+
         for sectionname in comment_map.get_sections() {
             Section::from_comment_map(sectionname, &comment_map).map(|section| {
                 sections.push(section);
@@ -259,6 +260,36 @@ impl DotFile {
     }
 
     pub fn get_source_files() {}
+
+    pub fn pretty_info(&self) -> String {
+        let mut retstring = String::new();
+        match self.metafile {
+            Some(metafile) => {
+                retstring.push_str(&metafile.pretty_info());
+            } // TODO
+            None => {
+                retstring.push_str(&format!("comment syntax: {}\n", self.commentsign));
+                for section in self.sections.iter() {
+                    if let Some(section_info) = &section.pretty_info() {
+                        retstring.push_str(&section_info);
+                        retstring.push('\n');
+                    }
+                }
+            }
+        };
+        if let Some(permissions) = self.permissions {
+            retstring.push_str(&format!(
+                "target permissions: {}\n",
+                permissions.to_string().bold()
+            ));
+        }
+
+        if let Some(targetfile) = &self.targetfile {
+            retstring.push_str(&format!("target : {}\n", targetfile.to_string().bold()));
+        }
+
+        return retstring;
+    }
 
     pub fn update(&mut self) {
         //iterate over sections in self.sections

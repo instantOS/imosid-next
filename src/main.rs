@@ -4,19 +4,19 @@ mod test;
 use colored::Colorize;
 use dotwalker::walkdots;
 mod comment;
+mod commentmap;
 mod contentline;
 mod files;
 mod hashable;
-mod section;
 mod metafile;
-mod commentmap;
-use std::path::PathBuf;
+mod section;
+use std::{path::PathBuf, println};
 
 use crate::{
     app::get_vec_args,
     files::{ApplyResult, DotFile},
-    metafile::MetaFile,
     hashable::Hashable,
+    metafile::MetaFile,
 };
 
 pub mod built_info {
@@ -221,62 +221,15 @@ fn main() -> Result<(), std::io::Error> {
             let filename = info_matches.get_one::<PathBuf>("file").unwrap();
             check_file_arg!(filename);
             let infofile = DotFile::from_pathbuf(filename)?;
-            match &infofile.metafile {
-                None => {
-                    println!("comment syntax: {}", &infofile.commentsign);
-                    for i in infofile.sections {
-                        if !i.name.is_some() {
-                            continue;
-                        }
-                        let outstr = format!(
-                            "{}-{}: {} | {}{}",
-                            i.startline,
-                            i.endline,
-                            i.name.unwrap(),
-                            if i.modified {
-                                "modified".red().bold()
-                            } else {
-                                "ok".green().bold()
-                            },
-                            match i.source {
-                                Some(s) => {
-                                    format!(" | source {}", &s)
-                                }
-                                None => {
-                                    "".to_string()
-                                }
-                            }
-                        );
-                        println!("{}", outstr);
-                    }
-                }
-                Some(metafile) => {
-                    println!("metafile hash: {}", &metafile.hash);
-                    println!(
-                        "{}",
-                        if metafile.modified {
-                            "modified".red()
-                        } else {
-                            "unmodified".green()
-                        }
-                    )
-                }
-            }
-            if let Some(permissions) = infofile.permissions {
-                println!(
-                    "target file permissions: {}",
-                    &permissions.to_string().bold()
-                )
-            }
-            if let Some(target) = infofile.targetfile {
-                println!("target: {}", &target);
-            }
+            println!("{}", infofile.pretty_info());
 
             if infofile.modified {
+                // give caller an easy way to tell if a file is modified
                 std::process::exit(1);
             }
         }
         Some((&_, _)) => {
+            //TODO: do this better
             return Ok(());
         }
         None => {

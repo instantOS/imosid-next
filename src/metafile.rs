@@ -226,4 +226,15 @@ impl MetaFile {
             }
         }
     }
+
+    pub fn pretty_info(&self) -> String {
+        let mut ret = String::new();
+        ret.push_str(&format!("metafile hash: {}\n", self.hash));
+        if self.modified {
+            ret.push_str(&"modified".red().bold());
+        } else {
+            ret.push_str(&"unmodified".green().bold());
+        }
+        ret
+    }
 }

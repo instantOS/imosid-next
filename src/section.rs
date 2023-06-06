@@ -5,6 +5,7 @@ use crate::{
     comment::Specialcomment,
     hashable::{ChangeState, Hashable},
 };
+use colored::Colorize;
 use sha256::digest;
 
 #[derive(Clone)]
@@ -86,7 +87,8 @@ impl Section {
             map.get_comment(name, CommentType::SectionBegin)?.line,
             map.get_comment(name, CommentType::SectionEnd)?.line,
             name.to_string(),
-            map.get_comment(name, CommentType::SourceInfo).and_then(|source| source.argument),
+            map.get_comment(name, CommentType::SourceInfo)
+                .and_then(|source| source.argument),
             map.get_comment(name, CommentType::HashInfo)?.argument?,
         ))
     }
@@ -153,6 +155,29 @@ impl Section {
         match self {
             Section::Named(data, _) => data,
             Section::Anonymous(data) => data,
+        }
+    }
+
+    pub fn pretty_info(&self) -> Option<String> {
+        // weiter
+        match self {
+            Section::Anonymous(_) => None,
+            Section::Named(data, named_data) => Some(format!(
+                "{}-{}: {} | {}{}",
+                &data.startline,
+                &data.endline,
+                &named_data.name,
+                if named_data.targethash == named_data.hash {
+                    "ok".bold().green()
+                } else {
+                    "modified".bold().red()
+                },
+                if let Some(source) = &named_data.source {
+                    format!(" | source {}", source)
+                } else {
+                    String::new()
+                }
+            )),
         }
     }
 }
