@@ -259,7 +259,17 @@ impl DotFile {
         counter
     }
 
-    pub fn get_source_files() {}
+    pub fn is_managed(&self) -> bool {
+        if let Some(metafile) = &self.metafile {
+            return true;
+        }
+        for i in &self.sections {
+            if let Section::Named { .. } = i {
+                return true;
+            }
+        }
+        return false;
+    }
 
     pub fn pretty_info(&self) -> String {
         let mut retstring = String::new();

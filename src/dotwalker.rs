@@ -1,8 +1,11 @@
 pub(crate) use std::path::PathBuf;
 
+use colored::Colorize;
 use walkdir::WalkDir;
 
-pub fn walkdots(path: &PathBuf) -> impl Iterator<Item = walkdir::DirEntry> {
+use crate::files::DotFile;
+
+pub fn walk_config_dir(path: &PathBuf) -> impl Iterator<Item = walkdir::DirEntry> {
     // TODO: how does ripgrep handle this?
     let walker = WalkDir::new(path)
         .into_iter()
@@ -15,4 +18,20 @@ pub fn walkdots(path: &PathBuf) -> impl Iterator<Item = walkdir::DirEntry> {
                 && path.to_path_buf().is_file()
         });
     return walker;
+}
+
+pub fn walk_dotfiles(path: &PathBuf) -> Vec<DotFile> {
+    let mut dotfiles = Vec::new();
+    for entry in walk_config_dir(path) {
+        let entrypath = entry.path().to_path_buf();
+        let dotfile = match DotFile::from_pathbuf(&entrypath) {
+            Ok(file) => file,
+            Err(_) => {
+                eprintln!("could not open file {}", entrypath.to_str().unwrap().red());
+                continue;
+            }
+        };
+        dotfiles.push(dotfile);
+    }
+    dotfiles
 }

@@ -2,7 +2,7 @@ mod app;
 mod dotwalker;
 mod test;
 use colored::Colorize;
-use dotwalker::walkdots;
+use dotwalker::{walk_config_dir, walk_dotfiles};
 mod comment;
 mod commentmap;
 mod contentline;
@@ -85,34 +85,17 @@ fn main() -> Result<(), std::io::Error> {
                 return Ok(());
             }
             let mut anymodified = false;
-            for entry in walkdots(filename) {
-                let entrypath = entry.path().to_path_buf();
-                let checkfile = match DotFile::from_pathbuf(&entrypath) {
-                    Ok(file) => file,
-                    Err(_) => {
-                        eprintln!("could not open file {}", entrypath.to_str().unwrap().red());
-                        continue;
-                    }
-                };
-                if checkfile.modified {
-                    println!("{} {}", checkfile.filename.red().bold(), "modified".red());
+            for dotfile in walk_dotfiles(filename) {
+                if dotfile.modified {
+                    println!("{} {}", dotfile.filename.red().bold(), "modified".red());
                     anymodified = true;
                 }
-                let mut fileanonymous = true;
-                if !checkfile.metafile.is_some() {
-                    for i in checkfile.sections {
-                        if !i.is_anonymous() {
-                            fileanonymous = false;
-                            break;
-                        }
-                    }
-                    if fileanonymous {
-                        println!(
-                            "{} {}",
-                            checkfile.filename.yellow().bold(),
-                            "is unmanaged".yellow()
-                        )
-                    }
+                if !dotfile.is_managed() {
+                    println!(
+                        "{} {}",
+                        dotfile.filename.yellow().bold(),
+                        "is unmanaged".yellow()
+                    )
                 }
             }
         }
@@ -185,7 +168,7 @@ fn main() -> Result<(), std::io::Error> {
             let mut donesomething = false;
             let filename = apply_matches.get_one::<PathBuf>("file").unwrap();
             if filename.is_dir() {
-                for entry in walkdots(filename) {
+                for entry in walk_config_dir(filename) {
                     let entrypath = entry.path().to_path_buf();
                     let entrystring = entry.path().to_str();
                     let tmpsource = match DotFile::from_pathbuf(&entry.path().to_path_buf()) {
