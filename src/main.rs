@@ -17,6 +17,7 @@ use crate::{
     files::{ApplyResult, DotFile},
     hashable::Hashable,
     metafile::MetaFile,
+    section::Section,
 };
 
 pub mod built_info {
@@ -35,7 +36,7 @@ macro_rules! check_file_arg {
     };
 }
 
-macro_rules! specialfile {
+macro_rules! get_dotfile {
     ($a:expr) => {
         match DotFile::from_pathbuf($a) {
             Ok(file) => file,
@@ -63,7 +64,7 @@ fn main() -> Result<(), std::io::Error> {
                 println!("compiled {}", &filename.to_str().unwrap().bold());
                 return Ok(());
             }
-            let mut compfile = specialfile!(filename);
+            let mut compfile = get_dotfile!(filename);
             if compfile.compile() {
                 compfile.write_to_file();
                 println!("compiled {}", filename.to_str().unwrap().bold());
@@ -118,23 +119,22 @@ fn main() -> Result<(), std::io::Error> {
 
         Some(("query", query_matches)) => {
             let filename = query_matches.get_one::<PathBuf>("file").unwrap();
-            let sections = get_vec_args(query_matches, "section");
+            let query_sections = get_vec_args(query_matches, "section");
 
             check_file_arg!(filename);
 
-            let queryfile = specialfile!(filename);
+            let queryfile = get_dotfile!(filename);
 
             if queryfile.metafile.is_some() {
                 todo!("add message for this");
                 return Ok(());
             }
             for i in queryfile.sections {
-                if i.is_anonymous() {
-                    continue;
-                }
-                for j in &sections {
-                    if i.name.clone().unwrap().eq(j) {
-                        println!("{}", i.output(&queryfile.commentsign));
+                if let Section::Named(_, named_data) = i {
+                    for query in query_sections {
+                        if query.eq(&named_data.name) {
+                            println!("{}", i.output(&queryfile.commentsign));
+                        }
                     }
                 }
             }
@@ -147,7 +147,7 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut updatefile = specialfile!(filename);
+            let mut updatefile = get_dotfile!(filename);
             updatefile.update();
 
             match updatefile.metafile {
@@ -169,7 +169,7 @@ fn main() -> Result<(), std::io::Error> {
 
             check_file_arg!(filename);
 
-            let mut deletefile = specialfile!(filename);
+            let mut deletefile = get_dotfile!(filename);
 
             for i in sections {
                 if deletefile.deletesection(i) {
@@ -210,7 +210,7 @@ fn main() -> Result<(), std::io::Error> {
                 }
                 return Ok(());
             } else if filename.is_file() {
-                let tmpsource = specialfile!(filename);
+                let tmpsource = get_dotfile!(filename);
                 tmpsource.apply();
             } else {
                 eprintln!("{}", "file does not exist".red().bold());
