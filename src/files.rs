@@ -263,10 +263,8 @@ impl DotFile {
         if let Some(metafile) = &self.metafile {
             return true;
         }
-        for i in &self.sections {
-            if let Section::Named { .. } = i {
-                return true;
-            }
+        if !self.is_anonymous() {
+            return true;
         }
         return false;
     }
@@ -685,6 +683,17 @@ impl DotFile {
         }
         return false;
     }
+
+    pub fn get_hashbang(&self) -> Option<String> {
+        let firstsection = self.sections.get(0).unwrap();
+        if let Section::Anonymous(section_data) = firstsection {
+            let firstline = section_data.content.split("\n").nth(0).unwrap();
+            if Regex::new("^#!/.*").unwrap().is_match(&firstline) {
+                return Some(String::from(firstline));
+            }
+        }
+        None
+    }
 }
 
 impl ToString for DotFile {
@@ -695,13 +704,18 @@ impl ToString for DotFile {
                 let mut firstsection: Option<String> = Option::None;
 
                 // respect hashbang
+                // TODO: do same thing with all "all" section comments
                 // and put comments below it
                 if self.targetfile.is_some() {
+                    match self.sections.get(0).unwrap() {
+                        Section::Anonymous(data) => {}
+                    }
                     if self.sections.get(0).unwrap().is_anonymous() {
                         let firstline = String::from(
                             self.sections
                                 .get(0)
                                 .unwrap()
+                                .get_data()
                                 .content
                                 .split("\n")
                                 .nth(0)

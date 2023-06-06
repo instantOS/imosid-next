@@ -27,7 +27,7 @@ pub struct NamedSectionData {
 #[derive(Clone)]
 pub struct SectionData {
     pub startline: u32, // line number section starts at in file
-    content: String,
+    pub content: String,
     pub endline: u32, // line number section ends at in file
 }
 
