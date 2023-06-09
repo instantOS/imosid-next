@@ -159,7 +159,6 @@ impl Section {
     }
 
     pub fn pretty_info(&self) -> Option<String> {
-        // weiter
         match self {
             Section::Anonymous(_) => None,
             Section::Named(data, named_data) => Some(format!(

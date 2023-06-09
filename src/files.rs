@@ -694,6 +694,22 @@ impl DotFile {
         }
         None
     }
+
+    fn get_property_comments(&self) -> String {
+        let mut retstr = String::new();
+        // TODO: do same thing with all "all" section comments
+        if let Some(targetfile) = &self.targetfile {
+            retstr.push_str(&Specialcomment::new_string(
+                &self.commentsign,
+                CommentType::TargetInfo,
+                "all",
+                None,
+            ));
+            retstr.push_str("\n");
+        }
+
+        retstr
+    }
 }
 
 impl ToString for DotFile {
@@ -701,65 +717,35 @@ impl ToString for DotFile {
         match &self.metafile {
             None => {
                 let mut retstr = String::new();
-                let mut firstsection: Option<String> = Option::None;
+                let outputsections;
 
                 // respect hashbang
-                // TODO: do same thing with all "all" section comments
                 // and put comments below it
-                if self.targetfile.is_some() {
-                    match self.sections.get(0).unwrap() {
-                        Section::Anonymous(data) => {}
-                    }
-                    if self.sections.get(0).unwrap().is_anonymous() {
-                        let firstline = String::from(
-                            self.sections
+                match self.get_hashbang() {
+                    Some(hashbang) => {
+                        retstr.push_str(&format!("{}\n", hashbang));
+                        retstr.push_str(&self.get_property_comments());
+                        retstr.push_str(
+                            &self
+                                .sections
                                 .get(0)
                                 .unwrap()
                                 .get_data()
                                 .content
-                                .split("\n")
-                                .nth(0)
-                                .unwrap(),
+                                .lines()
+                                .collect::<Vec<&str>>()[1..]
+                                .join("\n"),
                         );
-                        let originalcontent = &self.sections.get(0).unwrap().content;
-
-                        if Regex::new("^#!/.*").unwrap().is_match(&firstline) {
-                            let mut newcontent = String::from(&firstline);
-                            newcontent.push_str(&format!(
-                                "\n{}... all target {}\n",
-                                &self.commentsign,
-                                &(self.targetfile.clone().unwrap())
-                            ));
-                            // reappend original section content
-                            newcontent.push_str(originalcontent.trim_start_matches(&firstline));
-                            firstsection = Option::Some(newcontent);
-                        } else {
-                            let mut newcontent = String::from(format!(
-                                "{}... all target {}\n",
-                                self.commentsign,
-                                self.targetfile.clone().unwrap()
-                            ));
-                            newcontent.push_str(originalcontent);
-                            firstsection = Option::Some(newcontent);
-                        }
-                    } else {
-                        let mut newcontent = String::from(&self.commentsign);
-                        newcontent.push_str("... all target");
-                        newcontent.push_str(&(self.targetfile.clone().unwrap()));
-                        newcontent.push('\n');
-
-                        newcontent.push_str(&self.sections.get(0).unwrap().content);
-                        firstsection = Option::Some(newcontent);
+                        outputsections = &self.sections[1..];
+                    }
+                    None => {
+                        retstr.push_str(&self.get_property_comments());
+                        outputsections = &self.sections[..];
                     }
                 }
 
-                for i in &self.sections {
-                    if firstsection.is_some() {
-                        retstr.push_str(&firstsection.unwrap());
-                        firstsection = Option::None;
-                    } else {
-                        retstr.push_str(&i.output(&self.commentsign));
-                    }
+                for i in outputsections {
+                    retstr.push_str(&i.output(&self.commentsign));
                 }
                 return retstr;
             }
@@ -774,7 +760,7 @@ impl ToString for DotFile {
 fn get_comment_sign(filename: &str, firstline: &str) -> String {
     let fpath = Path::new(filename);
 
-    let mut file_name_commentsigns: HashMap<&str, &str> = HashMap::from([
+    let file_name_commentsigns: HashMap<&str, &str> = HashMap::from([
         ("dunstrc", "#"),
         ("jgmenurc", "#"),
         ("zshrc", "#"),
