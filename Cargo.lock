@@ -213,7 +213,7 @@ dependencies = [
 
 [[package]]
 name = "imosid"
-version = "0.0.0-beta7"
+version = "0.0.1"
 dependencies = [
  "built",
  "clap",

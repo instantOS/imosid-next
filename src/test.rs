@@ -78,7 +78,7 @@ testing123
         let mut sectioncount = 0;
 
         for section in testfile.sections {
-            if let Section::Named(data, named_data) = section {
+            if let Section::Named(_, named_data) = section {
                 sectioncount += 1;
                 assert!(vec!["firstsection", "secondsection"].contains(&named_data.name.as_str()));
             }
