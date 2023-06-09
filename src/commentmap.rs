@@ -38,7 +38,7 @@ impl CommentMap {
                     incomplete = true;
                     break;
                 }
-                comment_types.insert(comment.comment_type);
+                comment_types.insert(comment.comment_type.clone());
             }
 
             if !incomplete {

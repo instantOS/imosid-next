@@ -112,9 +112,10 @@ fn main() -> Result<(), std::io::Error> {
                 todo!("add message for this");
                 return Ok(());
             }
-            for i in queryfile.sections {
+
+            for i in &queryfile.sections {
                 if let Section::Named(_, named_data) = i {
-                    for query in query_sections {
+                    for query in &query_sections {
                         if query.eq(&named_data.name) {
                             println!("{}", i.output(&queryfile.commentsign));
                         }

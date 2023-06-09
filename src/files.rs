@@ -6,6 +6,7 @@ use crate::metafile::MetaFile;
 use crate::section::{NamedSectionData, Section, SectionData};
 use colored::Colorize;
 use regex::Regex;
+use std::clone;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
@@ -137,12 +138,12 @@ impl DotFile {
         comment_map.remove_incomplete();
 
         if let Some(comment) = comment_map.get_comment("all", CommentType::TargetInfo) {
-            if let Some(arg) = comment.argument {
+            if let Some(arg) = &comment.argument {
                 target_file = Some(String::from(arg));
             }
         }
         if let Some(comment) = comment_map.get_comment("all", CommentType::PermissionInfo) {
-            if let Some(arg) = comment.argument {
+            if let Some(arg) = &comment.argument {
                 permissions = match arg.split_at(3).1.parse::<u32>() {
                     Err(_) => Option::None,
                     Ok(permnumber) => Option::Some(permnumber),
@@ -260,7 +261,7 @@ impl DotFile {
     }
 
     pub fn is_managed(&self) -> bool {
-        if let Some(metafile) = &self.metafile {
+        if self.metafile.is_some() {
             return true;
         }
         if !self.is_anonymous() {
@@ -271,7 +272,7 @@ impl DotFile {
 
     pub fn pretty_info(&self) -> String {
         let mut retstring = String::new();
-        match self.metafile {
+        match &self.metafile {
             Some(metafile) => {
                 retstring.push_str(&metafile.pretty_info());
             } // TODO

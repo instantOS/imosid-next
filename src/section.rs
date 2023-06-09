@@ -88,8 +88,10 @@ impl Section {
             map.get_comment(name, CommentType::SectionEnd)?.line,
             name.to_string(),
             map.get_comment(name, CommentType::SourceInfo)
-                .and_then(|source| source.argument),
-            map.get_comment(name, CommentType::HashInfo)?.argument?,
+                .and_then(|source| source.clone().argument),
+            map.get_comment(name, CommentType::HashInfo)?
+                .clone()
+                .argument?,
         ))
     }
 
